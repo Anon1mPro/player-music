@@ -1,728 +1,1168 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Ultimate Audio Visualizer & Player</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            -webkit-user-select: none;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ultimate Audio Visualizer & Player</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
 
-        body {
-            background-color: #080810;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
+body {
+  background-color: #080810; color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden; height: 100vh;
+  display: flex; justify-content: center; align-items: center; position: relative;
+}
 
-        /* ORQA FON RASMI KONTEYNERI */
-        #bgContainer {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 0;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+#bgContainer { position: absolute; inset: 0; z-index: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+#bgImg { width: 100%; height: 100%; object-fit: cover; pointer-events: none; transform-origin: center center; transition: transform .05s linear; }
 
-        #bgImg {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            pointer-events: none;
-            transform-origin: center center;
-            transition: transform 0.05s linear;
-        }
+#edgeGlow { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  box-shadow: inset 0 0 60px var(--circle-color, #66fcf1); opacity: .2; transition: opacity .05s ease; }
 
-        #edgeGlow {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 1;
-            pointer-events: none;
-            box-shadow: inset 0 0 60px var(--circle-color, #66fcf1);
-            opacity: 0.2;
-            transition: opacity 0.05s ease;
-        }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
 
-        canvas {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 2;
-        }
+.main-panel {
+  position: absolute; z-index: 10; top: 15px; right: 15px; width: 330px; max-height: 88vh;
+  overflow-y: auto; background: rgba(15,15,26,.92); padding: 15px; border-radius: 14px;
+  display: flex; flex-direction: column; gap: 10px; backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,.15); transition: opacity .3s ease, transform .3s ease;
+  scrollbar-width: thin; scrollbar-color: #66fcf1 transparent;
+}
+.main-panel::-webkit-scrollbar { width: 6px; }
+.main-panel::-webkit-scrollbar-thumb { background: #66fcf1; border-radius: 3px; }
+.main-panel.hidden { opacity: 0; pointer-events: none; transform: translateY(-10px) scale(.95); }
 
-        .main-panel {
-            position: absolute;
-            z-index: 10;
-            top: 15px;
-            right: 15px;
-            width: 320px;
-            max-height: 85vh;
-            overflow-y: auto;
-            background: rgba(15, 15, 26, 0.92);
-            padding: 15px;
-            border-radius: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
+.panel-header { display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,.2); padding-bottom: 6px; position: sticky; top: -15px;
+  background: rgba(15,15,26,.96); margin: -15px -15px 0; padding: 12px 15px; z-index: 3; }
+.panel-header h3 { font-size: 12px; text-transform: uppercase; color: #66fcf1; letter-spacing: .5px; }
+.close-btn { background: none; border: none; color: #fff; font-size: 16px; cursor: pointer; }
+.close-btn:hover { color: #ff4d4d; }
 
-        .main-panel.hidden {
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(-10px) scale(0.95);
-        }
+.section-title { font-weight: bold; color: #ff007f; margin-top: 6px; font-size: 11px;
+  border-bottom: 1px dashed rgba(255,255,255,.2); padding-bottom: 2px; }
 
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding-bottom: 6px;
-        }
+label { font-size: 11px; display: flex; flex-direction: column; gap: 3px; }
 
-        .panel-header h3 {
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #66fcf1;
-            letter-spacing: 0.5px;
-        }
+.file-label { cursor: pointer; background: #1f2833; padding: 8px; border-radius: 6px;
+  text-align: center; border: 1px solid rgba(255,255,255,.2); font-size: 11px; }
+.file-label:hover { border-color: #66fcf1; }
 
-        .close-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .close-btn:hover { color: #ff4d4d; }
+select, input[type="range"], input[type="color"], input[type="text"] {
+  background: #1f2833; color: #fff; border: 1px solid rgba(255,255,255,.2);
+  padding: 5px; border-radius: 4px; width: 100%; font-family: inherit; font-size: 11px; }
 
-        .section-title {
-            font-weight: bold;
-            color: #ff007f;
-            margin-top: 6px;
-            font-size: 11px;
-            border-bottom: 1px dashed rgba(255,255,255,0.2);
-            padding-bottom: 2px;
-        }
+.checkbox-label { flex-direction: row !important; justify-content: space-between; cursor: pointer; align-items: center; }
 
-        label {
-            font-size: 11px;
-            display: flex;
-            flex-direction: column;
-            gap: 3px;
-        }
+.btn { background: #1f2833; border: 1px solid rgba(255,255,255,.35); color: #fff;
+  padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+.btn:hover { border-color: #66fcf1; color: #66fcf1; }
+.btn.on { border-color: #66fcf1; color: #66fcf1; background: rgba(102,252,241,.12); }
 
-        .file-label {
-            cursor: pointer;
-            background: #1f2833;
-            padding: 8px;
-            border-radius: 6px;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-            font-size: 11px;
-        }
+.player-row { display: flex; gap: 6px; align-items: center; }
 
-        select, input[type="range"], input[type="color"], input[type="text"] {
-            background: #1f2833;
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 5px;
-            border-radius: 4px;
-            width: 100%;
-        }
+#playlist { max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px;
+  border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 6px; background: rgba(0,0,0,.3); }
+#playlist::-webkit-scrollbar { width: 5px; }
+#playlist::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+.track { font-size: 11px; padding: 5px 7px; border-radius: 5px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cfd6dd; }
+.track:hover { background: rgba(255,255,255,.07); }
+.track.active { background: rgba(102,252,241,.15); color: #66fcf1; }
+.track.dead { color: #77404a; text-decoration: line-through; }
+.hint { font-size: 10px; color: #8a94a0; line-height: 1.4; }
 
-        .checkbox-label {
-            flex-direction: row !important;
-            justify-content: space-between;
-            cursor: pointer;
-        }
+.subtitle-container { position: absolute; bottom: 20px; z-index: 10; text-align: center; width: 90%;
+  transition: opacity .3s ease; }
+.subtitle-container.hidden { opacity: 0; pointer-events: none; }
+.subtitle { font-size: 13px; color: #fff; background: rgba(0,0,0,.75); padding: 6px 16px;
+  border-radius: 20px; cursor: pointer; backdrop-filter: blur(5px);
+  border: 1px solid rgba(255,255,255,.15); display: inline-block; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        /* MARKAZIY DOIRA O'RALMASI */
-        .circle-wrapper {
-            position: relative;
-            z-index: 5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+.circle-wrapper { position: relative; z-index: 5; display: flex; justify-content: center; align-items: center; }
+.circle-container { width: 180px; height: 180px; border-radius: 50%; border: 3px solid #fff;
+  cursor: pointer; box-shadow: 0 0 25px var(--circle-color, #66fcf1); touch-action: manipulation;
+  overflow: hidden; position: relative; }
+.circle-img { width: 100%; height: 100%; object-fit: cover; pointer-events: none;
+  transform-origin: center center; transition: transform .05s linear; }
 
-        .circle-container {
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-            border: 3px solid #ffffff;
-            cursor: pointer;
-            box-shadow: 0 0 25px var(--circle-color, #66fcf1);
-            touch-action: manipulation;
-            overflow: hidden;
-            position: relative;
-        }
+#dropHint { position: absolute; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center;
+  background: rgba(8,8,16,.85); border: 3px dashed #66fcf1; font-size: 16px; color: #66fcf1; }
+#dropHint.show { display: flex; }
 
-        /* DOIRA ICHIDAGI RASM */
-        .circle-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            pointer-events: none;
-            transform-origin: center center;
-            transition: transform 0.05s linear;
-        }
-
-        .subtitle-container {
-            position: absolute;
-            bottom: 20px;
-            z-index: 10;
-            text-align: center;
-            width: 90%;
-            transition: opacity 0.3s ease;
-        }
-        .subtitle-container.hidden { opacity: 0; pointer-events: none; }
-        .subtitle {
-            font-size: 13px;
-            color: #fff;
-            background: rgba(0, 0, 0, 0.75);
-            padding: 6px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.15);
-            display: inline-block;
-        }
-
-        @media (max-width: 600px) {
-            .main-panel {
-                width: 90%;
-                right: 5%;
-                top: 10px;
-            }
-            .circle-container {
-                width: 150px;
-                height: 150px;
-            }
-        }
-    </style>
+@media (max-width: 600px) {
+  .main-panel { width: 92%; right: 4%; top: 10px; }
+  .circle-container { width: 150px; height: 150px; }
+}
+</style>
 </head>
 <body>
 
-    <div id="bgContainer">
-        <img id="bgImg" src="" style="display: none;" alt="Background Image">
-    </div>
+<div id="bgContainer"><img id="bgImg" src="" style="display:none" alt="Orqa fon"></div>
+<div id="edgeGlow"></div>
+<canvas id="visualizer"></canvas>
 
-    <div id="edgeGlow"></div>
-    <canvas id="visualizer"></canvas>
+<div class="circle-wrapper">
+  <div class="circle-container" id="circleBtn">
+    <img class="circle-img" id="circleImg" src="https://picsum.photos/400" alt="Doira rasmi">
+  </div>
+</div>
 
-    <div class="circle-wrapper">
-        <div class="circle-container" id="circleBtn">
-            <img class="circle-img" id="circleImg" src="https://picsum.photos/300" alt="Circle Inner Image">
-        </div>
-    </div>
+<div class="main-panel hidden" id="mainPanel">
+  <div class="panel-header">
+    <h3>🎛 Sozlamalar</h3>
+    <button class="close-btn" onclick="toggleMainPanel()">✖</button>
+  </div>
 
-    <div class="main-panel hidden" id="mainPanel">
-        <div class="panel-header">
-            <h3>🎛 Sozlamalar</h3>
-            <button class="close-btn" onclick="toggleMainPanel()">✖</button>
-        </div>
+  <div class="section-title">🎵 MUSIQA / PLEYLIST</div>
+  <label class="file-label">🎵 Musiqa fayllarini qo'shish
+    <input type="file" id="audioInput" accept="audio/*" multiple style="display:none"></label>
+  <label class="file-label">📁 "music" papkasini tanlash
+    <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none"></label>
+  <div class="hint" id="folderStatus">Papkani bir marta tanlasangiz, ichidagi hamma qo'shiq pleylistga tushadi. Fayllarni ekranga tashlash (drag &amp; drop) ham ishlaydi.</div>
+  <div id="playlist"><div class="hint">Pleylist bo'sh.</div></div>
+  <div class="player-row">
+    <button class="btn" id="prevBtn">⏮</button>
+    <button class="btn" id="playBtn">▶</button>
+    <button class="btn" id="nextBtn">⏭</button>
+    <button class="btn" id="shuffleBtn" title="Aralashtirish">🔀</button>
+    <button class="btn" id="repeatBtn" title="Takrorlash">🔁</button>
+  </div>
+  <input type="range" id="seekBar" value="0" min="0" max="100" step="0.1">
+  <div style="display:flex;justify-content:space-between;font-size:10px" id="timeDisplay">00:00 / 00:00</div>
+  <label>🔊 Ovoz balandligi:
+    <input type="range" id="volumeBar" value="1" min="0" max="1" step="0.05"></label>
 
-        <div class="section-title">🎵 MUSIQA</div>
-        <label class="file-label">🎵 Musiqa Fayli Yuklash <input type="file" id="audioInput" accept="audio/*" style="display:none"></label>
+  <div class="section-title">🖼 ORQA FON RASMI</div>
+  <label class="file-label">🖼 Orqa fon faylini yuklash <input type="file" id="bgFileInput" accept="image/*" style="display:none"></label>
+  <label>🔗 Orqa fon URL: <input type="text" id="bgUrlInput" placeholder="https://example.com/bg.jpg"></label>
+  <label>🔍 Fon kattaligi: <input type="range" id="bgScaleInput" min="0.5" max="3" step="0.05" value="1"></label>
+  <label>🔄 Fon burilishi: <input type="range" id="bgRotateInput" min="0" max="360" step="1" value="0"></label>
+  <label>🌫 Fon xiraligi (Dim): <input type="range" id="bgDimInput" min="0" max="0.9" step="0.05" value="0.25"></label>
 
-        <div class="section-title">🖼 ORQA FON RASMI SOZLAMALARI</div>
-        <label class="file-label">🖼 Orqa Fon Faylini Yuklash <input type="file" id="bgFileInput" accept="image/*" style="display:none"></label>
-        <label>🔗 Orqa Fon URL (Silka):
-            <input type="text" id="bgUrlInput" placeholder="https://example.com/bg.jpg">
-        </label>
-        <label>🔍 Fon Kattaligi (Scale):
-            <input type="range" id="bgScaleInput" min="0.5" max="3" step="0.05" value="1">
-        </label>
-        <label>🔄 Fon Burilishi (Rotate):
-            <input type="range" id="bgRotateInput" min="0" max="360" step="1" value="0">
-        </label>
+  <div class="section-title">💿 DOIRA RASMI</div>
+  <label class="file-label">💿 Doira rasmini yuklash <input type="file" id="circleFileInput" accept="image/*" style="display:none"></label>
+  <label>🔗 Doira rasmi URL: <input type="text" id="circleUrlInput" placeholder="https://example.com/image.jpg"></label>
+  <label>🔍 Rasm kattaligi: <input type="range" id="imgScaleInput" min="0.5" max="2" step="0.05" value="1"></label>
+  <label>🔄 Rasm burilishi: <input type="range" id="imgRotateInput" min="0" max="360" step="1" value="0"></label>
 
-        <div class="section-title">💿 DOIRA RASMI SOZLAMALARI</div>
-        <label class="file-label">💿 Doira Rasmini Yuklash <input type="file" id="circleFileInput" accept="image/*" style="display:none"></label>
-        <label>🔗 Doira Rasmi URL (Silka):
-            <input type="text" id="circleUrlInput" placeholder="https://example.com/image.jpg">
-        </label>
-        <label>🔍 Rasm Kattaligi (Scale):
-            <input type="range" id="imgScaleInput" min="0.5" max="2" step="0.05" value="1">
-        </label>
-        <label>🔄 Rasm Burilishi (Rotate):
-            <input type="range" id="imgRotateInput" min="0" max="360" step="1" value="0">
-        </label>
+  <div class="section-title">⚡ SEZGIRLIK</div>
+  <label>🎚 Effektlar sezgirligi: <input type="range" id="visualSensitivity" min="0.1" max="2" step="0.05" value="0.8"></label>
+  <label>🌊 Silliqlik (Smoothing): <input type="range" id="smoothInput" min="0.05" max="0.6" step="0.05" value="0.3"></label>
 
-        <div class="section-title">▶ PLAYER</div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <button id="playBtn" style="background:#1f2833; border:1px solid #fff; color:#fff; padding:6px 12px; border-radius:4px;">▶</button>
-            <input type="range" id="seekBar" value="0" min="0" max="100" step="0.1" style="flex:1;">
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size:10px;" id="timeDisplay">00:00 / 00:00</div>
-        <label>🔊 Quloqqa Eshitiladigan Ovoz:
-            <input type="range" id="volumeBar" value="1" min="0" max="1" step="0.05">
-        </label>
+  <div class="section-title">⭕ DOIRA EFFEKTI (20 ta)</div>
+  <label>Doira rejimi:
+    <select id="circleMode">
+      <option value="circle360">01 · To'liq 360° nur</option>
+      <option value="dotsCircle">02 · Aylanuvchi nuqtalar</option>
+      <option value="sunburst">03 · Quyosh nurlari</option>
+      <option value="glowRing">04 · Pulsatsiyalanuvchi halqa</option>
+      <option value="doubleRing">05 · Ikki qavat halqa</option>
+      <option value="spikes">06 · O'tkir tikanlar</option>
+      <option value="orbitBalls">07 · Orbita sharlari</option>
+      <option value="waveRing">08 · To'lqinli halqa</option>
+      <option value="petals">09 · Gul barglari</option>
+      <option value="ledRing">10 · LED segmentlar</option>
+      <option value="ripples">11 · Suv halqalari</option>
+      <option value="dnaRing">12 · DNK spirali</option>
+      <option value="neonArcs">13 · Neon yoylar</option>
+      <option value="lasers">14 · Lazer nurlari</option>
+      <option value="bubblesRing">15 · Ko'piklar halqasi</option>
+      <option value="radarPoly">16 · Radar ko'pburchak</option>
+      <option value="tripleOrbit">17 · Uch orbita</option>
+      <option value="fireRing">18 · Olov halqasi</option>
+      <option value="starburst">19 · Yulduz portlashi</option>
+      <option value="spiralArms">20 · Spiral qanotlar</option>
+      <option value="none">— O'chirilgan —</option>
+    </select></label>
+  <label>Doira rangi: <input type="color" id="circleColorInput" value="#66fcf1"></label>
+  <label>Nurlar uzunligi: <input type="range" id="circleBarLength" min="10" max="260" step="5" value="80"></label>
 
-        <div class="section-title">⚡ EFFEKTLAR UCHUN MUSIQA BALANDLIGI</div>
-        <label>🎚 Effektlar Sezgirligi (Sensitivity):
-            <input type="range" id="visualSensitivity" min="0.1" max="1.5" step="0.05" value="0.6">
-        </label>
+  <div class="section-title">📺 EKRAN / CHEKKA EFFEKTI (20 ta)</div>
+  <label>Ekran rejimi:
+    <select id="bgMode">
+      <option value="dualSides">01 · 2 yon tomon</option>
+      <option value="topBottom">02 · Tepa va past</option>
+      <option value="oneSide">03 · Faqat past</option>
+      <option value="smoothWave">04 · Suv to'lqini</option>
+      <option value="boxFrame">05 · 4 tomonlama ramka</option>
+      <option value="matrixDots">06 · Matrix zarrachalar</option>
+      <option value="mirrorBars">07 · Ko'zgu ustunlar</option>
+      <option value="cityscape">08 · Tungi shahar</option>
+      <option value="starfield">09 · Yulduzlar oqimi</option>
+      <option value="gridFloor">10 · Retro to'r zamin</option>
+      <option value="rainLines">11 · Neon yomg'ir</option>
+      <option value="aurora">12 · Shimoliy shafaq</option>
+      <option value="fireBottom">13 · Pastki olov</option>
+      <option value="bubblesUp">14 · Suv ko'piklari</option>
+      <option value="lightning">15 · Chaqmoq</option>
+      <option value="tunnel">16 · Tunnel</option>
+      <option value="centerSplit">17 · Markazdan bo'linish</option>
+      <option value="cornerRays">18 · Burchak nurlari</option>
+      <option value="hexPulse">19 · Olti burchak to'r</option>
+      <option value="confetti">20 · Konfetti portlash</option>
+      <option value="none">— O'chirilgan —</option>
+    </select></label>
+  <label>Ekran rangi: <input type="color" id="bgColorInput" value="#ff007f"></label>
+  <label>Ekran balandligi: <input type="range" id="bgBarLength" min="0.05" max="0.8" step="0.05" value="0.25"></label>
 
-        <div class="section-title">⭕ DOIRA EFFEKTI</div>
-        <label>Doira Rejimi:
-            <select id="circleMode">
-                <option value="circle360">To'liq 360° Nur</option>
-                <option value="dotsCircle">Aylanuvchi Nuqtalar</option>
-                <option value="sunburst">Quyosh Nurlari</option>
-                <option value="glowRing">Pulsatsiyalanuvchi Halqa</option>
-                <option value="none">O'chirilgan</option>
-            </select>
-        </label>
-        <label>Doira Rangi:
-            <input type="color" id="circleColorInput" value="#66fcf1">
-        </label>
-        <label>Nurlar Uzunligi:
-            <input type="range" id="circleBarLength" min="10" max="200" step="5" value="60">
-        </label>
+  <div class="section-title">⚙ O'ZGARISHLAR</div>
+  <label class="checkbox-label">Doira aylansin: <input type="checkbox" id="enableRotate" checked></label>
+  <label>Doira pulsatsiyasi (Bass): <input type="range" id="bassScale" min="0" max="2" step="0.1" value="1"></label>
+  <label class="checkbox-label">Subtitr ko'rinsin: <input type="checkbox" id="showSubtitleCheck" checked></label>
+  <label class="checkbox-label">Nur (Glow) yoqilsin: <input type="checkbox" id="glowCheck" checked></label>
+  <div class="hint">Tugmalar: <b>B</b> — panel, <b>Space</b> — play/pauza, <b>→ ←</b> — keyingi/oldingi qo'shiq.</div>
+</div>
 
-        <div class="section-title">📺 EKRAN EFFEKTI</div>
-        <label>Ekran Rejimi:
-            <select id="bgMode">
-                <option value="none">Yo'q</option>
-                <option value="dualSides">2 Yon Tomon</option>
-                <option value="topBottom">Tepa va Past</option>
-                <option value="oneSide">Faqat Past</option>
-                <option value="smoothWave">Suv To'lqini</option>
-                <option value="boxFrame">4 Tomonlama Ramka</option>
-                <option value="matrixDots">Matrix Zarrachalar</option>
-            </select>
-        </label>
-        <label>Ekran Rangi:
-            <input type="color" id="bgColorInput" value="#ff007f">
-        </label>
-        <label>Ekran Balandligi:
-            <input type="range" id="bgBarLength" min="0.05" max="0.8" step="0.05" value="0.25">
-        </label>
+<div class="subtitle-container hidden" id="subtitleContainer">
+  <div class="subtitle" id="subtitleText">Musiqa yuklang (doirani bosib tursangiz panel chiqadi)</div>
+</div>
 
-        <div class="section-title">⚙ O'ZGARISHLAR</div>
-        <label class="checkbox-label">Doira Aylansin:
-            <input type="checkbox" id="enableRotate" checked>
-        </label>
-        <label>Doira Pulsatsiyasi (Bass):
-            <input type="range" id="bassScale" min="0" max="2" step="0.1" value="1">
-        </label>
-        <label class="checkbox-label">Subtitr Ko'rinsin:
-            <input type="checkbox" id="showSubtitleCheck" checked>
-        </label>
-    </div>
+<div id="dropHint">🎵 Fayllarni shu yerga tashlang</div>
 
-    <div class="subtitle-container hidden" id="subtitleContainer">
-        <div class="subtitle" id="subtitleText">Musiqa yuklang (Doirani bosib tursangiz panel chiqadi)</div>
-    </div>
+<script>
+/* ============================ ELEMENTLAR ============================ */
+const $ = id => document.getElementById(id);
+const circleBtn = $('circleBtn'), circleImg = $('circleImg'), bgImg = $('bgImg');
+const mainPanel = $('mainPanel'), subtitleContainer = $('subtitleContainer'), subtitleText = $('subtitleText');
+const showSubtitleCheck = $('showSubtitleCheck'), glowCheck = $('glowCheck');
+const audioInput = $('audioInput'), folderInput = $('folderInput'), folderStatus = $('folderStatus');
+const playlistEl = $('playlist');
+const bgFileInput = $('bgFileInput'), bgUrlInput = $('bgUrlInput'), bgScaleInput = $('bgScaleInput'),
+      bgRotateInput = $('bgRotateInput'), bgDimInput = $('bgDimInput');
+const circleFileInput = $('circleFileInput'), circleUrlInput = $('circleUrlInput'),
+      imgScaleInput = $('imgScaleInput'), imgRotateInput = $('imgRotateInput');
+const edgeGlow = $('edgeGlow'), canvas = $('visualizer'), ctx = canvas.getContext('2d');
+const playBtn = $('playBtn'), prevBtn = $('prevBtn'), nextBtn = $('nextBtn'),
+      shuffleBtn = $('shuffleBtn'), repeatBtn = $('repeatBtn');
+const seekBar = $('seekBar'), timeDisplay = $('timeDisplay'), volumeBar = $('volumeBar');
+const visualSensitivity = $('visualSensitivity'), smoothInput = $('smoothInput');
+const circleModeSelect = $('circleMode'), circleColorInput = $('circleColorInput'),
+      circleBarLengthInput = $('circleBarLength');
+const bgModeSelect = $('bgMode'), bgColorInput = $('bgColorInput'), bgBarLengthInput = $('bgBarLength');
+const enableRotateCheck = $('enableRotate'), bassScaleInput = $('bassScale');
 
-    <script>
-        const circleBtn = document.getElementById('circleBtn');
-        const circleImg = document.getElementById('circleImg');
-        const bgImg = document.getElementById('bgImg');
-        const mainPanel = document.getElementById('mainPanel');
-        const subtitleContainer = document.getElementById('subtitleContainer');
-        const subtitleText = document.getElementById('subtitleText');
-        const showSubtitleCheck = document.getElementById('showSubtitleCheck');
-        
-        const audioInput = document.getElementById('audioInput');
-        const bgFileInput = document.getElementById('bgFileInput');
-        const bgUrlInput = document.getElementById('bgUrlInput');
-        const bgScaleInput = document.getElementById('bgScaleInput');
-        const bgRotateInput = document.getElementById('bgRotateInput');
+/* ============================ MUSIC PAPKASI ============================ */
+/* Fayllarni HTML yonidagi "music" papkasiga tashlang.
+   1) Agar sayt serverda tursa — music/list.json yoki papka ro'yxati avtomatik o'qiladi.
+   2) Fayldan (file://) ochsangiz — panelda "music papkasini tanlash" tugmasini bosing. */
+const MUSIC_FOLDER = 'music/';
+const AUDIO_RE = /\.(mp3|wav|ogg|m4a|aac|flac|opus|weba|webm)$/i;
 
-        const circleFileInput = document.getElementById('circleFileInput');
-        const circleUrlInput = document.getElementById('circleUrlInput');
-        const imgScaleInput = document.getElementById('imgScaleInput');
-        const imgRotateInput = document.getElementById('imgRotateInput');
-        
-        const edgeGlow = document.getElementById('edgeGlow');
-        const canvas = document.getElementById('visualizer');
-        const ctx = canvas.getContext('2d');
+let audio = new Audio();
+audio.crossOrigin = 'anonymous';
+let playlist = [], current = -1, isPlaying = false, shuffle = false, repeat = 0; // 0 off, 1 all, 2 one
 
-        const playBtn = document.getElementById('playBtn');
-        const seekBar = document.getElementById('seekBar');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const volumeBar = document.getElementById('volumeBar');
-        const visualSensitivity = document.getElementById('visualSensitivity');
+function fmtName(n) { return n.replace(/\.[^.]+$/, '').replace(/_/g, ' '); }
 
-        const circleModeSelect = document.getElementById('circleMode');
-        const circleColorInput = document.getElementById('circleColorInput');
-        const circleBarLengthInput = document.getElementById('circleBarLength');
-        const bgModeSelect = document.getElementById('bgMode');
-        const bgColorInput = document.getElementById('bgColorInput');
-        const bgBarLengthInput = document.getElementById('bgBarLength');
-        const enableRotateCheck = document.getElementById('enableRotate');
-        const bassScaleInput = document.getElementById('bassScale');
+function addTracks(list, silent) {
+  const before = playlist.length;
+  list.forEach(t => { if (!playlist.some(p => p.name === t.name && p.url === t.url)) playlist.push(t); });
+  playlist.sort((a, b) => a.name.localeCompare(b.name, 'uz', { numeric: true }));
+  renderPlaylist();
+  const added = playlist.length - before;
+  if (!silent) folderStatus.textContent = added + ' ta qo\'shiq qo\'shildi. Jami: ' + playlist.length;
+  return added;
+}
 
-        let audio = new Audio();
-        let audioCtx, analyser, source, dataArray;
-        let isPlaying = false;
-        let rotationAngle = 0;
-        let particles = [];
+function renderPlaylist() {
+  playlistEl.innerHTML = '';
+  if (!playlist.length) { playlistEl.innerHTML = '<div class="hint">Pleylist bo\'sh.</div>'; return; }
+  playlist.forEach((t, i) => {
+    const d = document.createElement('div');
+    d.className = 'track' + (i === current ? ' active' : '') + (t.dead ? ' dead' : '');
+    d.textContent = (i + 1) + '. ' + fmtName(t.name);
+    d.title = t.name;
+    d.onclick = () => playTrack(i);
+    playlistEl.appendChild(d);
+  });
+}
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+function playTrack(i) {
+  if (!playlist.length) return;
+  current = (i + playlist.length) % playlist.length;
+  const t = playlist[current];
+  audio.src = t.url;
+  subtitleText.textContent = fmtName(t.name);
+  if (!audioCtx) setupAudioContext();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  audio.play().then(() => { isPlaying = true; playBtn.textContent = '⏸'; }).catch(() => {});
+  renderPlaylist();
+}
+
+function nextTrack(auto) {
+  if (!playlist.length) return;
+  if (auto && repeat === 2) { audio.currentTime = 0; audio.play(); return; }
+  if (shuffle) {
+    let n = current;
+    if (playlist.length > 1) while (n === current) n = Math.floor(Math.random() * playlist.length);
+    playTrack(n);
+  } else if (current + 1 >= playlist.length) {
+    if (auto && repeat === 0) { isPlaying = false; playBtn.textContent = '▶'; return; }
+    playTrack(0);
+  } else playTrack(current + 1);
+}
+function prevTrack() {
+  if (!playlist.length) return;
+  if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  playTrack(current - 1);
+}
+
+audio.addEventListener('ended', () => nextTrack(true));
+audio.addEventListener('error', () => {
+  if (current >= 0 && playlist[current]) { playlist[current].dead = true; renderPlaylist(); }
+});
+
+/* Papkani avtomatik o'qishga urinish (server bo'lsa ishlaydi) */
+async function autoLoadMusicFolder() {
+  try {
+    const r = await fetch(MUSIC_FOLDER + 'list.json', { cache: 'no-store' });
+    if (r.ok) {
+      const arr = await r.json();
+      const items = (Array.isArray(arr) ? arr : arr.files || []).map(f => ({
+        name: typeof f === 'string' ? f.split('/').pop() : f.name,
+        url: MUSIC_FOLDER + (typeof f === 'string' ? f : f.file || f.name)
+      }));
+      if (items.length) { addTracks(items, true); folderStatus.textContent = 'music/list.json dan ' + items.length + ' ta qo\'shiq yuklandi.'; return; }
+    }
+  } catch (e) {}
+  try {
+    const r = await fetch(MUSIC_FOLDER, { cache: 'no-store' });
+    if (r.ok) {
+      const html = await r.text();
+      const items = [];
+      html.replace(/href="([^"]+)"/gi, (m, href) => {
+        if (AUDIO_RE.test(href)) {
+          const name = decodeURIComponent(href.split('/').pop());
+          items.push({ name, url: href.startsWith('http') || href.startsWith('/') ? href : MUSIC_FOLDER + href });
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        return m;
+      });
+      if (items.length) { addTracks(items, true); folderStatus.textContent = 'music papkasidan ' + items.length + ' ta qo\'shiq topildi.'; }
+    }
+  } catch (e) {}
+}
+autoLoadMusicFolder();
 
-        function toggleMainPanel() {
-            mainPanel.classList.toggle('hidden');
-            if (showSubtitleCheck.checked) {
-                subtitleContainer.classList.toggle('hidden', mainPanel.classList.contains('hidden'));
-            }
+audioInput.onchange = e => {
+  const files = [...e.target.files].filter(f => f.type.startsWith('audio') || AUDIO_RE.test(f.name));
+  if (files.length) { addTracks(files.map(f => ({ name: f.name, url: URL.createObjectURL(f) }))); if (current < 0) playTrack(0); }
+};
+folderInput.onchange = e => {
+  const files = [...e.target.files].filter(f => AUDIO_RE.test(f.name));
+  if (!files.length) { folderStatus.textContent = 'Bu papkada musiqa fayli topilmadi.'; return; }
+  addTracks(files.map(f => ({ name: f.webkitRelativePath ? f.webkitRelativePath.split('/').pop() : f.name, url: URL.createObjectURL(f) })));
+  if (current < 0) playTrack(0);
+};
+
+/* Drag & drop */
+const dropHint = $('dropHint');
+window.addEventListener('dragover', e => { e.preventDefault(); dropHint.classList.add('show'); });
+window.addEventListener('dragleave', e => { if (e.relatedTarget === null) dropHint.classList.remove('show'); });
+window.addEventListener('drop', e => {
+  e.preventDefault(); dropHint.classList.remove('show');
+  const files = [...e.dataTransfer.files];
+  const songs = files.filter(f => AUDIO_RE.test(f.name) || f.type.startsWith('audio'));
+  const pics = files.filter(f => f.type.startsWith('image'));
+  if (songs.length) { addTracks(songs.map(f => ({ name: f.name, url: URL.createObjectURL(f) }))); if (current < 0) playTrack(0); }
+  if (pics.length) { bgImg.src = URL.createObjectURL(pics[0]); bgImg.style.display = 'block'; }
+});
+
+/* ============================ PLAYER BOSHQARUVI ============================ */
+function togglePlay() {
+  if (!playlist.length) { alert('Avval musiqa yuklang yoki "music" papkasini tanlang!'); return; }
+  if (current < 0) { playTrack(0); return; }
+  if (!audioCtx) setupAudioContext();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (isPlaying) { audio.pause(); isPlaying = false; playBtn.textContent = '▶'; }
+  else { audio.play(); isPlaying = true; playBtn.textContent = '⏸'; }
+}
+playBtn.onclick = togglePlay;
+nextBtn.onclick = () => nextTrack(false);
+prevBtn.onclick = prevTrack;
+shuffleBtn.onclick = () => { shuffle = !shuffle; shuffleBtn.classList.toggle('on', shuffle); };
+repeatBtn.onclick = () => {
+  repeat = (repeat + 1) % 3;
+  repeatBtn.textContent = repeat === 2 ? '🔂' : '🔁';
+  repeatBtn.classList.toggle('on', repeat > 0);
+};
+
+audio.ontimeupdate = () => {
+  if (!isNaN(audio.duration)) {
+    seekBar.value = (audio.currentTime / audio.duration) * 100;
+    timeDisplay.textContent = fmtTime(audio.currentTime) + ' / ' + fmtTime(audio.duration);
+  }
+};
+seekBar.oninput = () => { if (!isNaN(audio.duration)) audio.currentTime = (seekBar.value / 100) * audio.duration; };
+volumeBar.oninput = () => { audio.volume = volumeBar.value; };
+function fmtTime(s) { const m = Math.floor(s / 60) || 0, x = Math.floor(s % 60) || 0; return (m < 10 ? '0' + m : m) + ':' + (x < 10 ? '0' + x : x); }
+
+/* ============================ RASM SOZLAMALARI ============================ */
+function updateBgTransform() { bgImg.style.transform = `scale(${bgScaleInput.value}) rotate(${bgRotateInput.value}deg)`; }
+bgScaleInput.oninput = updateBgTransform; bgRotateInput.oninput = updateBgTransform;
+bgDimInput.oninput = () => { bgImg.style.filter = `brightness(${1 - bgDimInput.value})`; };
+bgDimInput.oninput();
+bgFileInput.onchange = e => { if (e.target.files[0]) { bgImg.src = URL.createObjectURL(e.target.files[0]); bgImg.style.display = 'block'; } };
+bgUrlInput.onchange = e => { if (e.target.value.trim()) { bgImg.src = e.target.value.trim(); bgImg.style.display = 'block'; } };
+
+function updateCircleImageTransform() { circleImg.style.transform = `scale(${imgScaleInput.value}) rotate(${imgRotateInput.value}deg)`; }
+imgScaleInput.oninput = updateCircleImageTransform; imgRotateInput.oninput = updateCircleImageTransform;
+circleFileInput.onchange = e => { if (e.target.files[0]) circleImg.src = URL.createObjectURL(e.target.files[0]); };
+circleUrlInput.onchange = e => { if (e.target.value.trim()) circleImg.src = e.target.value.trim(); };
+circleColorInput.oninput = e => document.documentElement.style.setProperty('--circle-color', e.target.value);
+
+/* ============================ PANEL / TUGMALAR ============================ */
+function toggleMainPanel() {
+  mainPanel.classList.toggle('hidden');
+  if (showSubtitleCheck.checked) subtitleContainer.classList.toggle('hidden', mainPanel.classList.contains('hidden'));
+}
+let pressTimer, isLongPress = false;
+function startPress() { isLongPress = false; pressTimer = setTimeout(() => { isLongPress = true; toggleMainPanel(); }, 500); }
+function cancelPress() { clearTimeout(pressTimer); }
+circleBtn.addEventListener('mousedown', startPress);
+circleBtn.addEventListener('touchstart', startPress, { passive: true });
+circleBtn.addEventListener('mouseup', () => { cancelPress(); if (!isLongPress) togglePlay(); });
+circleBtn.addEventListener('touchend', () => { cancelPress(); if (!isLongPress) togglePlay(); });
+circleBtn.addEventListener('mouseleave', cancelPress);
+circleBtn.addEventListener('touchmove', cancelPress);
+
+window.addEventListener('keydown', e => {
+  const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName);
+  if ((e.key === 'b' || e.key === 'B') && !typing) toggleMainPanel();
+  if (e.code === 'Space' && !typing) { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight' && !typing) nextTrack(false);
+  if (e.code === 'ArrowLeft' && !typing) prevTrack();
+});
+showSubtitleCheck.addEventListener('change', e => subtitleContainer.classList.toggle('hidden', !e.target.checked));
+
+/* ============================ AUDIO TAHLIL ============================ */
+let audioCtx, analyser, dataArray, srcNode;
+const N = 48;                       // ustunlar soni
+const M = N * 2;                    // to'liq doira uchun (pastda bo'shliq qolmaydi)
+let smooth = new Float32Array(N);
+let mir = new Float32Array(M);
+let bassHist = [];
+let W = 0, H = 0, DPR = 1;
+
+function setupAudioContext() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  srcNode = audioCtx.createMediaElementSource(audio);
+  srcNode.connect(analyser); analyser.connect(audioCtx.destination);
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.75;
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+}
+
+function resizeCanvas() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  P.stars = null; P.matrix = null; P.rain = null; P.bubbles = null;
+}
+window.addEventListener('resize', resizeCanvas);
+
+/* ============================ YORDAMCHILAR ============================ */
+function rgba(hex, a) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function glow(on, color, blur) {
+  if (on && glowCheck.checked) { ctx.shadowColor = color; ctx.shadowBlur = blur; }
+  else ctx.shadowBlur = 0;
+}
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+/* Zarrachalar ombori */
+const P = { stars: null, matrix: null, rain: null, bubbles: null, confetti: [], ripples: [], sparks: [], orbs: null, bolts: [] };
+
+/* ============================ DOIRA EFFEKTLARI (20) ============================ */
+const circleFX = {
+  none() {},
+
+  circle360(p) {
+    ctx.strokeStyle = p.col; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(2, 520 / M);
+    glow(1, p.col, 12);
+    for (let k = 0; k < M; k++) {
+      const a = -Math.PI / 2 + (k / M) * Math.PI * 2;
+      const L = Math.max(4, (mir[k] / 255) * p.len);
+      ctx.beginPath();
+      ctx.moveTo(p.cx + Math.cos(a) * p.R, p.cy + Math.sin(a) * p.R);
+      ctx.lineTo(p.cx + Math.cos(a) * (p.R + L), p.cy + Math.sin(a) * (p.R + L));
+      ctx.stroke();
+    }
+    glow(0);
+  },
+
+  dotsCircle(p) {
+    glow(1, p.col, 14);
+    for (let k = 0; k < M; k++) {
+      const a = -Math.PI / 2 + (k / M) * Math.PI * 2 + p.t * 0.3;
+      const v = mir[k] / 255, d = p.R + 12 + v * p.len;
+      ctx.fillStyle = rgba(p.col, 0.35 + v * 0.65);
+      ctx.beginPath(); ctx.arc(p.cx + Math.cos(a) * d, p.cy + Math.sin(a) * d, 2 + v * 6, 0, 7); ctx.fill();
+    }
+    glow(0);
+  },
+
+  sunburst(p) {
+    for (let k = 0; k < M; k++) {
+      const a = -Math.PI / 2 + (k / M) * Math.PI * 2;
+      const v = mir[k] / 255, L = v * p.len;
+      const g = ctx.createRadialGradient(p.cx, p.cy, p.R, p.cx, p.cy, p.R + L + 1);
+      g.addColorStop(0, rgba(p.col, 0.9)); g.addColorStop(1, rgba(p.col, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.cx, p.cy, p.R + L, a - Math.PI / M, a + Math.PI / M);
+      ctx.arc(p.cx, p.cy, p.R, a + Math.PI / M, a - Math.PI / M, true);
+      ctx.closePath(); ctx.fill();
+    }
+  },
+
+  glowRing(p) {
+    glow(1, p.col, 25);
+    for (let i = 0; i < 3; i++) {
+      const r = p.R + 10 + i * 14 + (p.bass / 255) * p.len * (0.4 + i * 0.25);
+      ctx.beginPath(); ctx.arc(p.cx, p.cy, r, 0, 7);
+      ctx.lineWidth = (6 - i * 1.5) + p.bass / 40;
+      ctx.strokeStyle = rgba(p.col, 0.9 - i * 0.28); ctx.stroke();
+    }
+    glow(0);
+  },
+
+  doubleRing(p) {
+    ctx.lineCap = 'round';
+    for (let k = 0; k < M; k++) {
+      const v = mir[k] / 255;
+      const a1 = -Math.PI / 2 + (k / M) * 6.283 + p.t * 0.4;
+      const a2 = -Math.PI / 2 - (k / M) * 6.283 - p.t * 0.4;
+      const r1 = p.R + 8, L1 = v * p.len * 0.6;
+      ctx.strokeStyle = rgba(p.col, 0.9); ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(p.cx + Math.cos(a1) * r1, p.cy + Math.sin(a1) * r1);
+      ctx.lineTo(p.cx + Math.cos(a1) * (r1 + L1), p.cy + Math.sin(a1) * (r1 + L1));
+      ctx.stroke();
+      const r2 = p.R + p.len * 0.95, L2 = v * p.len * 0.45;
+      ctx.strokeStyle = rgba(p.col, 0.45); ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.cx + Math.cos(a2) * r2, p.cy + Math.sin(a2) * r2);
+      ctx.lineTo(p.cx + Math.cos(a2) * (r2 - L2), p.cy + Math.sin(a2) * (r2 - L2));
+      ctx.stroke();
+    }
+  },
+
+  spikes(p) {
+    glow(1, p.col, 10);
+    for (let k = 0; k < M; k++) {
+      const a = -Math.PI / 2 + (k / M) * 6.283, w = Math.PI / M * 0.9;
+      const v = mir[k] / 255, L = v * p.len;
+      ctx.fillStyle = rgba(p.col, 0.25 + v * 0.75);
+      ctx.beginPath();
+      ctx.moveTo(p.cx + Math.cos(a - w) * p.R, p.cy + Math.sin(a - w) * p.R);
+      ctx.lineTo(p.cx + Math.cos(a) * (p.R + L), p.cy + Math.sin(a) * (p.R + L));
+      ctx.lineTo(p.cx + Math.cos(a + w) * p.R, p.cy + Math.sin(a + w) * p.R);
+      ctx.closePath(); ctx.fill();
+    }
+    glow(0);
+  },
+
+  orbitBalls(p) {
+    if (!P.orbs) P.orbs = Array.from({ length: 18 }, (_, i) => ({ a: (i / 18) * 6.283, sp: rnd(0.2, 0.7), off: rnd(0, 6.283) }));
+    glow(1, p.col, 18);
+    P.orbs.forEach((o, i) => {
+      o.a += o.sp * 0.02 + p.bass / 6000;
+      const v = smooth[i % N] / 255;
+      const d = p.R + 20 + Math.sin(p.t + o.off) * 12 + v * p.len;
+      const x = p.cx + Math.cos(o.a) * d, y = p.cy + Math.sin(o.a) * d;
+      for (let tr = 0; tr < 5; tr++) {
+        const ta = o.a - tr * 0.06, td = d - tr * 1.5;
+        ctx.fillStyle = rgba(p.col, (0.5 - tr * 0.09) * (0.4 + v));
+        ctx.beginPath(); ctx.arc(p.cx + Math.cos(ta) * td, p.cy + Math.sin(ta) * td, (5 + v * 7) * (1 - tr * 0.15), 0, 7); ctx.fill();
+      }
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 1.5 + v * 2, 0, 7); ctx.fill();
+    });
+    glow(0);
+  },
+
+  waveRing(p) {
+    glow(1, p.col, 16);
+    for (let layer = 0; layer < 2; layer++) {
+      ctx.beginPath();
+      for (let k = 0; k <= M; k++) {
+        const i = k % M;
+        const a = -Math.PI / 2 + (i / M) * 6.283 + p.t * (layer ? -0.15 : 0.15);
+        const r = p.R + 14 + layer * 10 + (mir[i] / 255) * p.len * (layer ? 0.6 : 1);
+        const x = p.cx + Math.cos(a) * r, y = p.cy + Math.sin(a) * r;
+        k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.lineWidth = layer ? 1.5 : 3;
+      ctx.strokeStyle = rgba(p.col, layer ? 0.4 : 1); ctx.stroke();
+      if (!layer) { ctx.fillStyle = rgba(p.col, 0.08); ctx.fill(); }
+    }
+    glow(0);
+  },
+
+  petals(p) {
+    const K = 12;
+    glow(1, p.col, 14);
+    for (let i = 0; i < K; i++) {
+      const a = (i / K) * 6.283 + p.t * 0.2;
+      const v = smooth[i * 3 % N] / 255;
+      const L = p.R + 15 + v * p.len;
+      const w = 0.22;
+      ctx.beginPath();
+      ctx.moveTo(p.cx + Math.cos(a) * p.R, p.cy + Math.sin(a) * p.R);
+      ctx.quadraticCurveTo(p.cx + Math.cos(a - w) * L * 0.75, p.cy + Math.sin(a - w) * L * 0.75,
+        p.cx + Math.cos(a) * L, p.cy + Math.sin(a) * L);
+      ctx.quadraticCurveTo(p.cx + Math.cos(a + w) * L * 0.75, p.cy + Math.sin(a + w) * L * 0.75,
+        p.cx + Math.cos(a) * p.R, p.cy + Math.sin(a) * p.R);
+      ctx.fillStyle = rgba(p.col, 0.15 + v * 0.5); ctx.fill();
+      ctx.strokeStyle = rgba(p.col, 0.8); ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    glow(0);
+  },
+
+  ledRing(p) {
+    const seg = 10, gap = 3, hSeg = p.len / seg;
+    for (let k = 0; k < M; k++) {
+      const a = -Math.PI / 2 + (k / M) * 6.283;
+      const lit = Math.round((mir[k] / 255) * seg);
+      for (let s = 0; s < lit; s++) {
+        const r0 = p.R + 6 + s * hSeg;
+        ctx.strokeStyle = rgba(p.col, 0.35 + (s / seg) * 0.65);
+        ctx.lineWidth = Math.max(2, 500 / M);
+        ctx.beginPath();
+        ctx.moveTo(p.cx + Math.cos(a) * r0, p.cy + Math.sin(a) * r0);
+        ctx.lineTo(p.cx + Math.cos(a) * (r0 + hSeg - gap), p.cy + Math.sin(a) * (r0 + hSeg - gap));
+        ctx.stroke();
+      }
+    }
+  },
+
+  ripples(p) {
+    if (p.beat) P.ripples.push({ r: p.R, a: 1, w: 4 + p.bass / 40 });
+    ctx.lineCap = 'butt';
+    P.ripples = P.ripples.filter(r => r.a > 0.02);
+    P.ripples.forEach(r => {
+      r.r += 3 + p.bass / 60; r.a *= 0.965;
+      ctx.beginPath(); ctx.arc(p.cx, p.cy, r.r, 0, 7);
+      ctx.lineWidth = r.w * r.a; ctx.strokeStyle = rgba(p.col, r.a); ctx.stroke();
+    });
+    ctx.beginPath(); ctx.arc(p.cx, p.cy, p.R + 6 + (p.bass / 255) * 10, 0, 7);
+    ctx.lineWidth = 2; ctx.strokeStyle = rgba(p.col, 0.5); ctx.stroke();
+  },
+
+  dnaRing(p) {
+    glow(1, p.col, 10);
+    const pts = [[], []];
+    for (let k = 0; k <= M; k++) {
+      const i = k % M, a = -Math.PI / 2 + (i / M) * 6.283;
+      const amp = 10 + (mir[i] / 255) * p.len * 0.5;
+      const ph = (i / M) * 6.283 * 6 + p.t * 2;
+      pts[0].push([p.cx + Math.cos(a) * (p.R + 25 + Math.sin(ph) * amp), p.cy + Math.sin(a) * (p.R + 25 + Math.sin(ph) * amp)]);
+      pts[1].push([p.cx + Math.cos(a) * (p.R + 25 - Math.sin(ph) * amp), p.cy + Math.sin(a) * (p.R + 25 - Math.sin(ph) * amp)]);
+    }
+    ctx.lineWidth = 1; ctx.strokeStyle = rgba(p.col, 0.3);
+    for (let k = 0; k < pts[0].length; k += 3) {
+      ctx.beginPath(); ctx.moveTo(pts[0][k][0], pts[0][k][1]); ctx.lineTo(pts[1][k][0], pts[1][k][1]); ctx.stroke();
+    }
+    [0, 1].forEach(s => {
+      ctx.beginPath(); pts[s].forEach((q, k) => k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]));
+      ctx.lineWidth = 2.5; ctx.strokeStyle = rgba(p.col, s ? 0.6 : 1); ctx.stroke();
+    });
+    glow(0);
+  },
+
+  neonArcs(p) {
+    glow(1, p.col, 22);
+    const arcs = 6;
+    for (let i = 0; i < arcs; i++) {
+      const v = smooth[i * 6 % N] / 255;
+      const r = p.R + 14 + i * (p.len / arcs) * 0.75;
+      const start = p.t * (i % 2 ? -0.6 : 0.6) + i;
+      const span = 0.5 + v * 2.2;
+      ctx.beginPath(); ctx.arc(p.cx, p.cy, r, start, start + span);
+      ctx.lineWidth = 2 + v * 8; ctx.lineCap = 'round';
+      ctx.strokeStyle = rgba(p.col, 0.35 + v * 0.65); ctx.stroke();
+    }
+    glow(0);
+  },
+
+  lasers(p) {
+    const K = 16;
+    for (let i = 0; i < K; i++) {
+      const a = (i / K) * 6.283 + p.t * 0.25;
+      const v = smooth[i * 3 % N] / 255;
+      const far = p.R + 30 + v * (p.len * 3);
+      const g = ctx.createLinearGradient(p.cx + Math.cos(a) * p.R, p.cy + Math.sin(a) * p.R,
+        p.cx + Math.cos(a) * far, p.cy + Math.sin(a) * far);
+      g.addColorStop(0, rgba(p.col, 0.9)); g.addColorStop(1, rgba(p.col, 0));
+      ctx.strokeStyle = g; ctx.lineWidth = 1 + v * 4;
+      ctx.beginPath();
+      ctx.moveTo(p.cx + Math.cos(a) * (p.R + 6), p.cy + Math.sin(a) * (p.R + 6));
+      ctx.lineTo(p.cx + Math.cos(a) * far, p.cy + Math.sin(a) * far);
+      ctx.stroke();
+    }
+  },
+
+  bubblesRing(p) {
+    if (!P.ringBub) P.ringBub = [];
+    if (P.ringBub.length < 70 && Math.random() < 0.4 + p.bass / 400)
+      P.ringBub.push({ a: rnd(0, 6.283), d: p.R, s: rnd(2, 7), v: rnd(0.4, 1.6), life: 1 });
+    P.ringBub = P.ringBub.filter(b => b.life > 0.03);
+    P.ringBub.forEach(b => {
+      b.d += b.v * (0.6 + p.bass / 200); b.a += 0.004; b.life *= 0.985;
+      ctx.beginPath(); ctx.arc(p.cx + Math.cos(b.a) * b.d, p.cy + Math.sin(b.a) * b.d, b.s * b.life, 0, 7);
+      ctx.strokeStyle = rgba(p.col, b.life * 0.9); ctx.lineWidth = 1.5; ctx.stroke();
+    });
+  },
+
+  radarPoly(p) {
+    const K = 24;
+    ctx.beginPath();
+    for (let i = 0; i <= K; i++) {
+      const a = -Math.PI / 2 + (i % K / K) * 6.283;
+      const r = p.R + 12 + (smooth[i % N] / 255) * p.len;
+      const x = p.cx + Math.cos(a) * r, y = p.cy + Math.sin(a) * r;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = rgba(p.col, 0.12); ctx.fill();
+    ctx.strokeStyle = p.col; ctx.lineWidth = 2; ctx.stroke();
+    const sweep = p.t % 6.283;
+    const g = ctx.createLinearGradient(p.cx, p.cy, p.cx + Math.cos(sweep) * (p.R + p.len), p.cy + Math.sin(sweep) * (p.R + p.len));
+    g.addColorStop(0, rgba(p.col, 0)); g.addColorStop(1, rgba(p.col, 0.7));
+    ctx.strokeStyle = g; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(p.cx, p.cy);
+    ctx.lineTo(p.cx + Math.cos(sweep) * (p.R + p.len), p.cy + Math.sin(sweep) * (p.R + p.len)); ctx.stroke();
+    for (let i = 0; i < K; i++) {
+      const a = -Math.PI / 2 + (i / K) * 6.283, r = p.R + 12 + (smooth[i % N] / 255) * p.len;
+      ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.cx + Math.cos(a) * r, p.cy + Math.sin(a) * r, 2.5, 0, 7); ctx.fill();
+    }
+  },
+
+  tripleOrbit(p) {
+    glow(1, p.col, 14);
+    for (let o = 0; o < 3; o++) {
+      const tilt = (o / 3) * Math.PI + p.t * 0.1;
+      const rx = p.R + 25 + o * 16 + (p.bass / 255) * 20;
+      const ry = rx * 0.42;
+      ctx.save(); ctx.translate(p.cx, p.cy); ctx.rotate(tilt);
+      ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7);
+      ctx.strokeStyle = rgba(p.col, 0.25); ctx.lineWidth = 1; ctx.stroke();
+      for (let d = 0; d < 5; d++) {
+        const a = p.t * (0.7 + o * 0.25) + (d / 5) * 6.283;
+        const v = smooth[(o * 5 + d) * 2 % N] / 255;
+        ctx.fillStyle = rgba(p.col, 0.5 + v * 0.5);
+        ctx.beginPath(); ctx.arc(Math.cos(a) * rx, Math.sin(a) * ry, 3 + v * 6, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+    }
+    glow(0);
+  },
+
+  fireRing(p) {
+    for (let k = 0; k < M; k++) {
+      const a = -Math.PI / 2 + (k / M) * 6.283;
+      const v = mir[k] / 255;
+      const flick = 0.75 + Math.sin(p.t * 6 + k) * 0.25;
+      const L = (v * p.len + 8) * flick;
+      const g = ctx.createLinearGradient(p.cx + Math.cos(a) * p.R, p.cy + Math.sin(a) * p.R,
+        p.cx + Math.cos(a) * (p.R + L), p.cy + Math.sin(a) * (p.R + L));
+      g.addColorStop(0, 'rgba(255,255,255,0.95)');
+      g.addColorStop(0.35, rgba(p.col, 0.85));
+      g.addColorStop(1, rgba(p.col, 0));
+      ctx.fillStyle = g;
+      const w = Math.PI / M * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(p.cx + Math.cos(a - w) * p.R, p.cy + Math.sin(a - w) * p.R);
+      ctx.quadraticCurveTo(p.cx + Math.cos(a + 0.05) * (p.R + L * 0.6), p.cy + Math.sin(a + 0.05) * (p.R + L * 0.6),
+        p.cx + Math.cos(a + Math.sin(p.t * 3 + k) * 0.05) * (p.R + L), p.cy + Math.sin(a + Math.sin(p.t * 3 + k) * 0.05) * (p.R + L));
+      ctx.quadraticCurveTo(p.cx + Math.cos(a - 0.05) * (p.R + L * 0.6), p.cy + Math.sin(a - 0.05) * (p.R + L * 0.6),
+        p.cx + Math.cos(a + w) * p.R, p.cy + Math.sin(a + w) * p.R);
+      ctx.closePath(); ctx.fill();
+    }
+  },
+
+  starburst(p) {
+    glow(1, p.col, 18);
+    for (let k = 0; k < M; k++) {
+      const a = -Math.PI / 2 + (k / M) * 6.283 + p.t * 0.1;
+      const v = mir[k] / 255;
+      const L = (k % 2 ? 1 : 0.45) * (v * p.len * 1.6 + 10);
+      const w = Math.PI / M * 0.5;
+      ctx.fillStyle = rgba(p.col, k % 2 ? 0.9 : 0.4);
+      ctx.beginPath();
+      ctx.moveTo(p.cx + Math.cos(a - w) * (p.R + 4), p.cy + Math.sin(a - w) * (p.R + 4));
+      ctx.lineTo(p.cx + Math.cos(a) * (p.R + L), p.cy + Math.sin(a) * (p.R + L));
+      ctx.lineTo(p.cx + Math.cos(a + w) * (p.R + 4), p.cy + Math.sin(a + w) * (p.R + 4));
+      ctx.closePath(); ctx.fill();
+    }
+    glow(0);
+  },
+
+  spiralArms(p) {
+    const arms = 4, steps = 26;
+    glow(1, p.col, 12);
+    for (let a0 = 0; a0 < arms; a0++) {
+      for (let s = 0; s < steps; s++) {
+        const f = s / steps;
+        const v = smooth[Math.floor(f * N) % N] / 255;
+        const a = (a0 / arms) * 6.283 + f * 2.4 + p.t * 0.5;
+        const r = p.R + 10 + f * (p.len * 1.8);
+        ctx.fillStyle = rgba(p.col, (1 - f) * (0.35 + v * 0.65));
+        ctx.beginPath();
+        ctx.arc(p.cx + Math.cos(a) * r, p.cy + Math.sin(a) * r, (1 + v * 5) * (1 - f * 0.6), 0, 7);
+        ctx.fill();
+      }
+    }
+    glow(0);
+  }
+};
+
+/* ============================ EKRAN EFFEKTLARI (20) ============================ */
+const screenFX = {
+  none() {},
+
+  dualSides(p) {
+    const bh = H / N;
+    ctx.fillStyle = p.col;
+    for (let i = 0; i < N; i++) {
+      const L = (smooth[i] / 255) * (W * p.max), y = i * bh;
+      ctx.fillRect(0, y, L, bh - 1);
+      ctx.fillRect(W - L, y, L, bh - 1);
+    }
+  },
+
+  topBottom(p) {
+    const bw = (W / 2) / N;
+    ctx.fillStyle = p.col;
+    for (let i = 0; i < N; i++) {
+      const L = (smooth[i] / 255) * (H * p.max);
+      const xr = W / 2 + i * bw, xl = W / 2 - (i + 1) * bw;
+      ctx.fillRect(xr, 0, bw - 1, L); ctx.fillRect(xl, 0, bw - 1, L);
+      ctx.fillRect(xr, H - L, bw - 1, L); ctx.fillRect(xl, H - L, bw - 1, L);
+    }
+  },
+
+  oneSide(p) {
+    const bw = W / N;
+    for (let i = 0; i < N; i++) {
+      const L = (smooth[i] / 255) * (H * p.max);
+      const g = ctx.createLinearGradient(0, H, 0, H - L);
+      g.addColorStop(0, rgba(p.col, 0.25)); g.addColorStop(1, rgba(p.col, 1));
+      ctx.fillStyle = g; ctx.fillRect(i * bw, H - L, bw - 2, L);
+    }
+  },
+
+  smoothWave(p) {
+    ctx.strokeStyle = p.col; ctx.lineWidth = 4; glow(1, p.col, 15);
+    for (let lay = 0; lay < 3; lay++) {
+      ctx.beginPath();
+      ctx.globalAlpha = 1 - lay * 0.3;
+      for (let x = 0; x <= W; x += 5) {
+        const v = smooth[Math.floor((x / W) * N) % N] / 255;
+        const y = H / 2 + Math.sin(x * 0.012 + p.t * 2 + lay) * (v * 120 * p.max * 2 + 8) + lay * 12;
+        x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1; glow(0);
+  },
+
+  boxFrame(p) {
+    const L = (p.bass / 255) * (120 * p.max);
+    ctx.strokeStyle = p.col; glow(1, p.col, 20);
+    for (let i = 0; i < 3; i++) {
+      ctx.lineWidth = 6 - i * 2; ctx.globalAlpha = 1 - i * 0.3;
+      ctx.strokeRect(L + i * 10, L + i * 10, W - (L + i * 10) * 2, H - (L + i * 10) * 2);
+    }
+    ctx.globalAlpha = 1; glow(0);
+  },
+
+  matrixDots(p) {
+    if (!P.matrix) P.matrix = Array.from({ length: 90 }, () => ({ x: rnd(0, W), y: rnd(0, H), sp: rnd(1, 4), s: rnd(1, 4) }));
+    ctx.fillStyle = p.col;
+    P.matrix.forEach((q, i) => {
+      const b = (smooth[i % N] / 255) * 12;
+      q.y -= q.sp + b; if (q.y < 0) { q.y = H; q.x = rnd(0, W); }
+      ctx.beginPath(); ctx.arc(q.x, q.y, q.s + b / 3, 0, 7); ctx.fill();
+    });
+  },
+
+  mirrorBars(p) {
+    const bw = W / N, mid = H * 0.72;
+    for (let i = 0; i < N; i++) {
+      const L = (smooth[i] / 255) * (H * p.max);
+      ctx.fillStyle = p.col; ctx.fillRect(i * bw, mid - L, bw - 2, L);
+      const g = ctx.createLinearGradient(0, mid, 0, mid + L * 0.6);
+      g.addColorStop(0, rgba(p.col, 0.45)); g.addColorStop(1, rgba(p.col, 0));
+      ctx.fillStyle = g; ctx.fillRect(i * bw, mid + 3, bw - 2, L * 0.6);
+    }
+  },
+
+  cityscape(p) {
+    const bw = W / N;
+    for (let i = 0; i < N; i++) {
+      const L = (smooth[i] / 255) * (H * p.max) + 20;
+      ctx.fillStyle = rgba(p.col, 0.22); ctx.fillRect(i * bw, H - L, bw - 3, L);
+      ctx.strokeStyle = rgba(p.col, 0.8); ctx.lineWidth = 1; ctx.strokeRect(i * bw, H - L, bw - 3, L);
+      ctx.fillStyle = rgba(p.col, 0.9);
+      for (let wy = H - L + 8; wy < H - 6; wy += 14)
+        for (let wx = i * bw + 4; wx < i * bw + bw - 7; wx += 9)
+          if ((wx * wy + Math.floor(p.t * 2)) % 7 < 3) ctx.fillRect(wx, wy, 3, 5);
+    }
+  },
+
+  starfield(p) {
+    if (!P.stars) P.stars = Array.from({ length: 220 }, () => ({ x: rnd(-1, 1), y: rnd(-1, 1), z: rnd(0.1, 1) }));
+    const sp = 0.004 + (p.bass / 255) * 0.03;
+    ctx.fillStyle = p.col;
+    P.stars.forEach(s => {
+      const pz = s.z; s.z -= sp;
+      if (s.z <= 0.02) { s.x = rnd(-1, 1); s.y = rnd(-1, 1); s.z = 1; return; }
+      const x = W / 2 + (s.x / s.z) * W * 0.5, y = H / 2 + (s.y / s.z) * H * 0.5;
+      const px = W / 2 + (s.x / pz) * W * 0.5, py = H / 2 + (s.y / pz) * H * 0.5;
+      if (x < -50 || x > W + 50 || y < -50 || y > H + 50) return;
+      ctx.strokeStyle = rgba(p.col, Math.min(1, (1 - s.z) * 1.2));
+      ctx.lineWidth = (1 - s.z) * 3;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+    });
+  },
+
+  gridFloor(p) {
+    const hor = H * 0.6;
+    ctx.strokeStyle = rgba(p.col, 0.7); ctx.lineWidth = 1.5;
+    for (let i = -12; i <= 12; i++) {
+      ctx.beginPath(); ctx.moveTo(W / 2 + i * 24, hor); ctx.lineTo(W / 2 + i * (W / 6), H); ctx.stroke();
+    }
+    const off = (p.t * 60 + p.bass) % 40;
+    for (let z = 0; z < 16; z++) {
+      const f = (z * 40 + off) / 640;
+      const y = hor + Math.pow(f, 2) * (H - hor) * 2.2;
+      if (y > H) continue;
+      ctx.strokeStyle = rgba(p.col, 0.15 + f * 0.7);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    const g = ctx.createLinearGradient(0, hor - 120, 0, hor);
+    g.addColorStop(0, rgba(p.col, 0)); g.addColorStop(1, rgba(p.col, 0.25 + p.bass / 900));
+    ctx.fillStyle = g; ctx.fillRect(0, hor - 120, W, 120);
+  },
+
+  rainLines(p) {
+    if (!P.rain) P.rain = Array.from({ length: 130 }, () => ({ x: rnd(0, W), y: rnd(0, H), l: rnd(10, 40), sp: rnd(6, 18) }));
+    ctx.lineWidth = 1.5;
+    P.rain.forEach((r, i) => {
+      const b = (smooth[i % N] / 255) * 12;
+      r.y += r.sp + b; if (r.y > H) { r.y = -r.l; r.x = rnd(0, W); }
+      ctx.strokeStyle = rgba(p.col, 0.25 + (smooth[i % N] / 255) * 0.7);
+      ctx.beginPath(); ctx.moveTo(r.x, r.y); ctx.lineTo(r.x, r.y + r.l); ctx.stroke();
+    });
+  },
+
+  aurora(p) {
+    for (let b = 0; b < 4; b++) {
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      for (let x = 0; x <= W; x += 12) {
+        const v = smooth[Math.floor((x / W) * N) % N] / 255;
+        const y = 60 + b * 26 + Math.sin(x * 0.006 + p.t * (0.6 + b * 0.2)) * (40 + v * 120 * p.max * 2);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, 0); ctx.closePath();
+      const g = ctx.createLinearGradient(0, 0, 0, 240);
+      g.addColorStop(0, rgba(p.col, 0.03)); g.addColorStop(1, rgba(p.col, 0.16));
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = rgba(p.col, 0.35); ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  },
+
+  fireBottom(p) {
+    const bw = W / N;
+    for (let i = 0; i < N; i++) {
+      const v = smooth[i] / 255;
+      const L = (v * H * p.max) + 30 + Math.sin(p.t * 8 + i) * 12;
+      const g = ctx.createLinearGradient(0, H, 0, H - L);
+      g.addColorStop(0, 'rgba(255,255,255,0.85)');
+      g.addColorStop(0.3, rgba(p.col, 0.8));
+      g.addColorStop(1, rgba(p.col, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(i * bw - 4, H);
+      ctx.quadraticCurveTo(i * bw + bw / 2, H - L * 0.55, i * bw + bw / 2 + Math.sin(p.t * 4 + i) * 8, H - L);
+      ctx.quadraticCurveTo(i * bw + bw / 2, H - L * 0.55, i * bw + bw + 4, H);
+      ctx.closePath(); ctx.fill();
+    }
+  },
+
+  bubblesUp(p) {
+    if (!P.bubbles) P.bubbles = Array.from({ length: 70 }, () => ({ x: rnd(0, W), y: rnd(0, H), r: rnd(3, 16), sp: rnd(.5, 2.2), ph: rnd(0, 6) }));
+    ctx.lineWidth = 1.5;
+    P.bubbles.forEach((b, i) => {
+      const v = smooth[i % N] / 255;
+      b.y -= b.sp + v * 5; if (b.y < -20) { b.y = H + 20; b.x = rnd(0, W); }
+      const x = b.x + Math.sin(p.t * 1.5 + b.ph) * 14;
+      ctx.strokeStyle = rgba(p.col, 0.25 + v * 0.6);
+      ctx.beginPath(); ctx.arc(x, b.y, b.r * (1 + v * 0.5), 0, 7); ctx.stroke();
+      ctx.fillStyle = rgba(p.col, 0.07); ctx.fill();
+    });
+  },
+
+  lightning(p) {
+    if (p.beat && Math.random() < 0.85) {
+      const x0 = rnd(0, W), pts = [[x0, 0]];
+      let x = x0, y = 0;
+      while (y < H) { y += rnd(20, 60); x += rnd(-60, 60); pts.push([x, y]); }
+      P.bolts.push({ pts, a: 1 });
+    }
+    P.bolts = P.bolts.filter(b => b.a > 0.04);
+    glow(1, p.col, 25);
+    P.bolts.forEach(b => {
+      b.a *= 0.86;
+      ctx.strokeStyle = rgba(p.col, b.a); ctx.lineWidth = 1 + b.a * 4;
+      ctx.beginPath(); b.pts.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,255,${b.a * 0.7})`; ctx.lineWidth = 1; ctx.stroke();
+    });
+    glow(0);
+  },
+
+  tunnel(p) {
+    const layers = 14;
+    for (let i = 0; i < layers; i++) {
+      const f = ((i / layers) + (p.t * 0.18 + p.bass / 3000)) % 1;
+      const s = Math.pow(f, 2);
+      const w = W * s * 1.4, h = H * s * 1.4;
+      ctx.strokeStyle = rgba(p.col, (1 - f) * 0.8);
+      ctx.lineWidth = 1 + (1 - f) * 3;
+      ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(f * 0.6 + p.t * 0.1);
+      ctx.strokeRect(-w / 2, -h / 2, w, h); ctx.restore();
+    }
+  },
+
+  centerSplit(p) {
+    const bw = W / N, mid = H / 2;
+    for (let i = 0; i < N; i++) {
+      const L = (smooth[i] / 255) * (H * p.max);
+      const g = ctx.createLinearGradient(0, mid - L, 0, mid + L);
+      g.addColorStop(0, rgba(p.col, 0)); g.addColorStop(0.5, rgba(p.col, 1)); g.addColorStop(1, rgba(p.col, 0));
+      ctx.fillStyle = g; ctx.fillRect(i * bw, mid - L, bw - 2, L * 2);
+    }
+    ctx.fillStyle = rgba(p.col, 0.6); ctx.fillRect(0, mid - 1, W, 2);
+  },
+
+  cornerRays(p) {
+    const corners = [[0, 0], [W, 0], [0, H], [W, H]];
+    corners.forEach((c, ci) => {
+      for (let i = 0; i < 10; i++) {
+        const v = smooth[(ci * 10 + i) % N] / 255;
+        const base = Math.atan2(H / 2 - c[1], W / 2 - c[0]);
+        const a = base + (i - 4.5) * 0.09 + Math.sin(p.t * 0.5 + ci) * 0.05;
+        const L = 120 + v * Math.max(W, H) * 0.7;
+        const g = ctx.createLinearGradient(c[0], c[1], c[0] + Math.cos(a) * L, c[1] + Math.sin(a) * L);
+        g.addColorStop(0, rgba(p.col, 0.55)); g.addColorStop(1, rgba(p.col, 0));
+        ctx.strokeStyle = g; ctx.lineWidth = 2 + v * 5;
+        ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.lineTo(c[0] + Math.cos(a) * L, c[1] + Math.sin(a) * L); ctx.stroke();
+      }
+    });
+  },
+
+  hexPulse(p) {
+    const R = 34, hw = R * Math.sqrt(3);
+    let i = 0;
+    for (let row = 0; row * R * 1.5 < H + R; row++) {
+      for (let col = 0; col * hw < W + hw; col++) {
+        const x = col * hw + (row % 2 ? hw / 2 : 0), y = row * R * 1.5;
+        const d = Math.hypot(x - W / 2, y - H / 2);
+        const v = smooth[Math.floor(d / 40 + i) % N] / 255;
+        if (v < 0.06) { i++; continue; }
+        ctx.beginPath();
+        for (let k = 0; k < 6; k++) {
+          const a = Math.PI / 6 + k * Math.PI / 3, r = R * 0.9 * (0.4 + v * 0.6);
+          k ? ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : ctx.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
         }
+        ctx.closePath();
+        ctx.strokeStyle = rgba(p.col, 0.15 + v * 0.75); ctx.lineWidth = 1.5; ctx.stroke();
+        i++;
+      }
+    }
+  },
 
-        // ORQA FON TRANSFORMASIYASI
-        function updateBgTransform() {
-            let scale = bgScaleInput.value;
-            let rotate = bgRotateInput.value;
-            bgImg.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
-        }
+  confetti(p) {
+    if (p.beat) for (let i = 0; i < 26; i++)
+      P.confetti.push({ x: rnd(0, W), y: -10, vx: rnd(-1.5, 1.5), vy: rnd(1, 5), s: rnd(4, 11), r: rnd(0, 6), vr: rnd(-.2, .2), a: 1 });
+    P.confetti = P.confetti.filter(c => c.y < H + 20 && c.a > 0.05);
+    if (P.confetti.length > 500) P.confetti.splice(0, P.confetti.length - 500);
+    P.confetti.forEach(c => {
+      c.x += c.vx + Math.sin(p.t * 2 + c.r) * 0.7; c.y += c.vy; c.vy += 0.05; c.r += c.vr; c.a *= 0.995;
+      ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.r);
+      ctx.fillStyle = rgba(p.col, c.a); ctx.fillRect(-c.s / 2, -c.s / 4, c.s, c.s / 2);
+      ctx.restore();
+    });
+  }
+};
 
-        bgScaleInput.oninput = updateBgTransform;
-        bgRotateInput.oninput = updateBgTransform;
+/* ============================ RENDER ============================ */
+let rot = 0, tt = 0, beat = false, lastBeat = 0;
 
-        bgFileInput.onchange = (e) => {
-            if(e.target.files[0]) {
-                bgImg.src = URL.createObjectURL(e.target.files[0]);
-                bgImg.style.display = 'block';
-            }
-        };
+function analyze() {
+  const sens = parseFloat(visualSensitivity.value);
+  const sm = parseFloat(smoothInput.value);
+  if (analyser) analyser.getByteFrequencyData(dataArray);
+  const step = Math.max(1, Math.floor((dataArray ? dataArray.length * 0.65 : N) / N));
+  for (let i = 0; i < N; i++) {
+    let raw = 0;
+    if (dataArray) {
+      for (let j = 0; j < step; j++) raw = Math.max(raw, dataArray[i * step + j] || 0);
+      raw *= (1 + (i / N) * 1.6) * sens;
+      if (!isPlaying) raw = 0;
+    }
+    smooth[i] += (Math.min(255, raw) - smooth[i]) * sm;
+  }
+  for (let k = 0; k < M; k++) mir[k] = smooth[k < N ? k : (M - 1 - k)];
 
-        bgUrlInput.onchange = (e) => {
-            if(e.target.value.trim() !== '') {
-                bgImg.src = e.target.value.trim();
-                bgImg.style.display = 'block';
-            }
-        };
+  const bass = (smooth[0] + smooth[1] + smooth[2] + smooth[3]) / 4;
+  bassHist.push(bass); if (bassHist.length > 43) bassHist.shift();
+  const avg = bassHist.reduce((a, b) => a + b, 0) / bassHist.length;
+  const now = performance.now();
+  beat = bass > avg * 1.35 && bass > 45 && now - lastBeat > 190;
+  if (beat) lastBeat = now;
+  return bass;
+}
 
-        // DOIRA RASMI TRANSFORMASIYASI
-        function updateCircleImageTransform() {
-            let scale = imgScaleInput.value;
-            let rotate = imgRotateInput.value;
-            circleImg.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
-        }
+function render() {
+  requestAnimationFrame(render);
+  tt += 0.016;
+  const bass = analyze();
 
-        imgScaleInput.oninput = updateCircleImageTransform;
-        imgRotateInput.oninput = updateCircleImageTransform;
+  ctx.clearRect(0, 0, W, H);
 
-        circleFileInput.onchange = (e) => {
-            if(e.target.files[0]) {
-                circleImg.src = URL.createObjectURL(e.target.files[0]);
-            }
-        };
+  edgeGlow.style.opacity = (bass / 255) * 0.8;
+  edgeGlow.style.boxShadow = `inset 0 0 ${40 + bass / 4}px ${circleColorInput.value}`;
 
-        circleUrlInput.onchange = (e) => {
-            if(e.target.value.trim() !== '') {
-                circleImg.src = e.target.value.trim();
-            }
-        };
+  const scale = 1 + (bass / 255) * 0.35 * parseFloat(bassScaleInput.value);
+  if (enableRotateCheck.checked) rot += 0.3 + bass / 90;
+  circleBtn.style.transform = `scale(${scale}) rotate(${rot}deg)`;
 
-        // LONG PRESS MANTIQLARI
-        let pressTimer;
-        let isLongPress = false;
+  const cx = W / 2, cy = H / 2;
+  const base = { cx, cy, t: tt, bass, beat, W, H };
 
-        function startPress() {
-            isLongPress = false;
-            pressTimer = setTimeout(() => {
-                isLongPress = true;
-                toggleMainPanel();
-            }, 500);
-        }
+  const sp = Object.assign({ col: bgColorInput.value, max: parseFloat(bgBarLengthInput.value) }, base);
+  ctx.save(); (screenFX[bgModeSelect.value] || screenFX.none)(sp); ctx.restore();
 
-        function cancelPress() {
-            clearTimeout(pressTimer);
-        }
+  const cp = Object.assign({
+    col: circleColorInput.value,
+    len: parseFloat(circleBarLengthInput.value),
+    R: (circleBtn.offsetWidth / 2) * scale + 5
+  }, base);
+  ctx.save(); (circleFX[circleModeSelect.value] || circleFX.none)(cp); ctx.restore();
+}
 
-        circleBtn.addEventListener('mousedown', startPress);
-        circleBtn.addEventListener('touchstart', (e) => { startPress(); }, {passive: true});
-
-        circleBtn.addEventListener('mouseup', () => {
-            cancelPress();
-            if (!isLongPress) togglePlay();
-        });
-
-        circleBtn.addEventListener('touchend', () => {
-            cancelPress();
-            if (!isLongPress) togglePlay();
-        });
-
-        circleBtn.addEventListener('mouseleave', cancelPress);
-        circleBtn.addEventListener('touchmove', cancelPress);
-
-        // KLAVIATURA (B va Space)
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'b' || e.key === 'B') {
-                toggleMainPanel();
-            }
-            if (e.code === 'Space') {
-                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT') {
-                    e.preventDefault();
-                    togglePlay();
-                }
-            }
-        });
-
-        showSubtitleCheck.addEventListener('change', (e) => {
-            subtitleContainer.classList.toggle('hidden', !e.target.checked);
-        });
-
-        audioInput.onchange = (e) => {
-            if(e.target.files[0]) {
-                audio.src = URL.createObjectURL(e.target.files[0]);
-                subtitleText.innerText = e.target.files[0].name;
-            }
-        };
-
-        circleColorInput.oninput = (e) => {
-            document.documentElement.style.setProperty('--circle-color', e.target.value);
-        };
-
-        playBtn.onclick = togglePlay;
-
-        function togglePlay() {
-            if (!audio.src) return alert("Avval musiqa faylini yuklang!");
-            if (!audioCtx) setupAudioContext();
-
-            if (isPlaying) {
-                audio.pause();
-                isPlaying = false;
-                playBtn.innerText = "▶";
-            } else {
-                audio.play();
-                isPlaying = true;
-                playBtn.innerText = "⏸";
-                render();
-            }
-        }
-
-        audio.ontimeupdate = () => {
-            if (!isNaN(audio.duration)) {
-                seekBar.value = (audio.currentTime / audio.duration) * 100;
-                timeDisplay.innerText = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
-            }
-        };
-
-        seekBar.oninput = () => {
-            if (!isNaN(audio.duration)) {
-                audio.currentTime = (seekBar.value / 100) * audio.duration;
-            }
-        };
-
-        volumeBar.oninput = () => {
-            audio.volume = volumeBar.value;
-        };
-
-        function formatTime(sec) {
-            let m = Math.floor(sec / 60);
-            let s = Math.floor(sec % 60);
-            return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
-        }
-
-        function setupAudioContext() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = audioCtx.createAnalyser();
-            source = audioCtx.createMediaElementSource(audio);
-            source.connect(analyser);
-            analyser.connect(audioCtx.destination);
-            analyser.fftSize = 128; 
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-            for(let i=0; i<60; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    speed: 1 + Math.random() * 3,
-                    size: 1 + Math.random() * 3
-                });
-            }
-        }
-
-        function render() {
-            if (!isPlaying) return;
-            requestAnimationFrame(render);
-
-            analyser.getByteFrequencyData(dataArray);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Vizualizatsiya sezgirligini hisoblash
-            let sensitivity = parseFloat(visualSensitivity.value);
-
-            let rawBass = dataArray[2] || 0;
-            let bass = Math.min(255, rawBass * sensitivity);
-
-            edgeGlow.style.opacity = (bass / 255) * 0.8;
-            edgeGlow.style.boxShadow = `inset 0 0 ${40 + (bass / 4)}px ${circleColorInput.value}`;
-
-            let scaleMultiplier = parseFloat(bassScaleInput.value);
-            let scale = 1 + ((bass / 255) * 0.35 * scaleMultiplier);
-            circleBtn.style.transform = `scale(${scale}) rotate(${rotationAngle}deg)`;
-
-            if (enableRotateCheck.checked) {
-                rotationAngle += 0.3 + (bass / 90);
-            }
-
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
-            const N = 32;
-
-            const activeData = [];
-            for (let i = 0; i < N; i++) {
-                let val = (dataArray[i] * (1 + (i / N) * 1.5)) * sensitivity;
-                activeData.push(Math.min(255, val));
-            }
-
-            // 1. EKRAN EFFEKTLARI
-            const bgMode = bgModeSelect.value;
-            const bgMaxLen = parseFloat(bgBarLengthInput.value);
-            ctx.fillStyle = bgColorInput.value;
-            ctx.strokeStyle = bgColorInput.value;
-
-            if (bgMode === 'dualSides') {
-                let barHeight = canvas.height / N;
-                for (let i = 0; i < N; i++) {
-                    let len = (activeData[i] / 255) * (canvas.width * bgMaxLen);
-                    let y = i * barHeight;
-                    ctx.fillRect(0, y, len, barHeight - 1);
-                    ctx.fillRect(canvas.width - len, y, len, barHeight - 1);
-                }
-            } else if (bgMode === 'topBottom') {
-                let barWidth = (canvas.width / 2) / N;
-                for (let i = 0; i < N; i++) {
-                    let len = (activeData[i] / 255) * (canvas.height * bgMaxLen);
-                    let xRight = cx + (i * barWidth);
-                    let xLeft = cx - (i * barWidth);
-                    ctx.fillRect(xRight, 0, barWidth - 1, len);
-                    ctx.fillRect(xLeft, 0, barWidth - 1, len);
-                    ctx.fillRect(xRight, canvas.height - len, barWidth - 1, len);
-                    ctx.fillRect(xLeft, canvas.height - len, barWidth - 1, len);
-                }
-            } else if (bgMode === 'oneSide') {
-                let barWidth = canvas.width / N;
-                for (let i = 0; i < N; i++) {
-                    let len = (activeData[i] / 255) * (canvas.height * bgMaxLen);
-                    ctx.fillRect(i * barWidth, canvas.height - len, barWidth - 2, len);
-                }
-            } else if (bgMode === 'smoothWave') {
-                ctx.beginPath();
-                ctx.lineWidth = 4;
-                for (let x = 0; x <= canvas.width; x += 4) {
-                    let index = Math.floor((x / canvas.width) * N);
-                    let v = activeData[index] / 255;
-                    let y = cy + Math.sin(x * 0.01 + rotationAngle * 0.05) * (v * 100 * bgMaxLen * 2);
-                    if (x === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-            } else if (bgMode === 'boxFrame') {
-                let len = (bass / 255) * (100 * bgMaxLen);
-                ctx.lineWidth = 6;
-                ctx.strokeRect(len, len, canvas.width - (len*2), canvas.height - (len*2));
-            } else if (bgMode === 'matrixDots') {
-                particles.forEach((p, idx) => {
-                    let boost = (activeData[idx % N] / 255) * 10;
-                    p.y -= (p.speed + boost);
-                    if(p.y < 0) p.y = canvas.height;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.size + (boost/2), 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            }
-
-            // 2. DOIRA EFFEKTLARI
-            const circleMode = circleModeSelect.value;
-            const circleMaxLen = parseFloat(circleBarLengthInput.value);
-
-            if (circleMode === 'circle360') {
-                let radius = ((circleBtn.offsetWidth / 2) * scale) + 4;
-                ctx.strokeStyle = circleColorInput.value;
-
-                for (let i = 0; i < N; i++) {
-                    let value = activeData[i];
-                    let barLen = Math.max(2, (value / 255) * circleMaxLen);
-
-                    let angleRight = -Math.PI / 2 + (i / N) * Math.PI;
-                    let angleLeft = -Math.PI / 2 - (i / N) * Math.PI;
-
-                    [angleRight, angleLeft].forEach(angle => {
-                        let x1 = cx + Math.cos(angle) * radius;
-                        let y1 = cy + Math.sin(angle) * radius;
-                        let x2 = cx + Math.cos(angle) * (radius + barLen);
-                        let y2 = cy + Math.sin(angle) * (radius + barLen);
-
-                        ctx.beginPath();
-                        ctx.moveTo(x1, y1);
-                        ctx.lineTo(x2, y2);
-                        ctx.lineWidth = 2.5;
-                        ctx.lineCap = 'round';
-                        ctx.stroke();
-                    });
-                }
-            } else if (circleMode === 'dotsCircle') {
-                let radius = ((circleBtn.offsetWidth / 2) * scale) + 10;
-                ctx.fillStyle = circleColorInput.value;
-
-                for (let i = 0; i < N; i++) {
-                    let value = activeData[i];
-                    let dist = radius + ((value / 255) * circleMaxLen);
-                    let angleRight = -Math.PI / 2 + (i / N) * Math.PI;
-                    let angleLeft = -Math.PI / 2 - (i / N) * Math.PI;
-
-                    [angleRight, angleLeft].forEach(angle => {
-                        let x = cx + Math.cos(angle) * dist;
-                        let y = cy + Math.sin(angle) * dist;
-                        ctx.beginPath();
-                        ctx.arc(x, y, 3 + (value/50), 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                }
-            } else if (circleMode === 'sunburst') {
-                let radius = ((circleBtn.offsetWidth / 2) * scale) + 2;
-                ctx.fillStyle = circleColorInput.value;
-
-                for (let i = 0; i < N; i++) {
-                    let value = activeData[i];
-                    let barLen = (value / 255) * circleMaxLen;
-                    let angleRight = -Math.PI / 2 + (i / N) * Math.PI;
-                    let angleLeft = -Math.PI / 2 - (i / N) * Math.PI;
-
-                    [angleRight, angleLeft].forEach(angle => {
-                        ctx.beginPath();
-                        ctx.arc(cx, cy, radius + barLen, angle - 0.03, angle + 0.03);
-                        ctx.lineTo(cx, cy);
-                        ctx.fill();
-                    });
-                }
-            } else if (circleMode === 'glowRing') {
-                let radius = ((circleBtn.offsetWidth / 2) * scale) + ((bass / 255) * (circleMaxLen / 2));
-                ctx.beginPath();
-                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-                ctx.lineWidth = 5 + (bass / 30);
-                ctx.strokeStyle = circleColorInput.value;
-                ctx.stroke();
-            }
-        }
-    </script>
+resizeCanvas();
+render();
+</script>
 </body>
 </html>
