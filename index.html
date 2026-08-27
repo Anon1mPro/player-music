@@ -17,6 +17,39 @@ body {
 #bgContainer { position: absolute; inset: 0; z-index: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; }
 #bgImg { width: 100%; height: 100%; object-fit: cover; pointer-events: none; transform-origin: center center; transition: transform .05s linear; }
 
+#colorLayer {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  mix-blend-mode: screen; opacity: 0; transition: opacity .08s linear;
+}
+
+#dynLabel {
+  position: absolute; top: 14px; left: 14px; z-index: 11; font-size: 11px; letter-spacing: .3px;
+  background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.18); color: #fff;
+  padding: 7px 12px; border-radius: 18px; backdrop-filter: blur(6px);
+  opacity: 0; transition: opacity .4s ease; cursor: pointer; max-width: 60vw;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#dynLabel.show { opacity: 1; }
+#dynLabel b { color: var(--circle-color, #66fcf1); font-weight: 600; }
+
+#dynBtn { width: 100%; padding: 11px; font-size: 13px; letter-spacing: .3px; }
+#dynBtn.on { background: rgba(102,252,241,.16); box-shadow: 0 0 18px rgba(102,252,241,.25); }
+
+#keyList { display: flex; flex-direction: column; gap: 8px; }
+.key-item { border: 1px solid rgba(255,255,255,.14); border-radius: 9px; padding: 9px;
+  background: rgba(0,0,0,.3); display: flex; flex-direction: column; gap: 6px; }
+.key-item.live { border-color: #66fcf1; box-shadow: 0 0 14px rgba(102,252,241,.25); }
+.key-head { display: flex; align-items: center; gap: 6px; }
+.key-head .num { font-size: 11px; color: #66fcf1; min-width: 22px; }
+.key-time { width: 74px !important; text-align: center; font-size: 13px !important; letter-spacing: 1px; }
+.mini { background: #1f2833; border: 1px solid rgba(255,255,255,.3); color: #fff;
+  border-radius: 5px; padding: 5px 7px; font-size: 12px; cursor: pointer; }
+.mini:hover { border-color: #66fcf1; color: #66fcf1; }
+.mini.del:hover { border-color: #ff4d4d; color: #ff4d4d; }
+.key-colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.key-colors label { font-size: 9px; color: #8a94a0; gap: 2px; }
+.key-colors input[type="color"] { height: 24px; padding: 1px; }
+
 #edgeGlow { position: absolute; inset: 0; z-index: 1; pointer-events: none;
   box-shadow: inset 0 0 60px var(--circle-color, #66fcf1); opacity: .2; transition: opacity .05s ease; }
 
@@ -49,7 +82,7 @@ label { font-size: 11px; display: flex; flex-direction: column; gap: 3px; }
   text-align: center; border: 1px solid rgba(255,255,255,.2); font-size: 11px; }
 .file-label:hover { border-color: #66fcf1; }
 
-select, input[type="range"], input[type="color"], input[type="text"] {
+select, input[type="range"], input[type="color"], input[type="text"], input[type="number"] {
   background: #1f2833; color: #fff; border: 1px solid rgba(255,255,255,.2);
   padding: 5px; border-radius: 4px; width: 100%; font-family: inherit; font-size: 11px; }
 
@@ -105,8 +138,10 @@ select, input[type="range"], input[type="color"], input[type="text"] {
 <body>
 
 <div id="bgContainer"><img id="bgImg" src="" style="display:none" alt="Orqa fon"></div>
+<div id="colorLayer"></div>
 <div id="edgeGlow"></div>
 <canvas id="visualizer"></canvas>
+<div id="dynLabel"></div>
 
 <div class="circle-wrapper">
   <div class="circle-container" id="circleBtn">
@@ -155,6 +190,36 @@ select, input[type="range"], input[type="color"], input[type="text"] {
   <div class="section-title">⚡ SEZGIRLIK</div>
   <label>🎚 Effektlar sezgirligi: <input type="range" id="visualSensitivity" min="0.1" max="2" step="0.05" value="0.8"></label>
   <label>🌊 Silliqlik (Smoothing): <input type="range" id="smoothInput" min="0.05" max="0.6" step="0.05" value="0.3"></label>
+
+  <div class="section-title">🎲 DINAMIK ITEM</div>
+  <button class="btn" id="dynBtn">🎲 Dinamik rejim: O'CHIQ</button>
+  <div class="hint">Yoqilsa, 20 ta doira va 20 ta ekran effekti bassga qarab o'zi almashib turadi. Faqat mos keladigan juftliklar tanlanadi — kasha bo'lmaydi.</div>
+  <label>⏱ Almashish oralig'i (soniya):
+    <div class="player-row">
+      <input type="range" id="dynSpeed" min="0.5" max="30" step="0.5" value="8" style="flex:1">
+      <input type="number" id="dynSpeedNum" min="0.1" max="600" step="0.1" value="8" style="flex:0 0 76px;text-align:center;font-size:13px">
+    </div></label>
+  <div class="hint" id="dynSpeedLbl">Har 8 soniyada almashadi.</div>
+  <label class="checkbox-label">Ranglar ham o'zgarsin: <input type="checkbox" id="dynColors" checked></label>
+  <label class="checkbox-label">Faqat zarbda (drop) almashsin: <input type="checkbox" id="dynOnBeat" checked></label>
+  <label class="checkbox-label">🔔 Almashganda nomi chiqsin (tepa chapda): <input type="checkbox" id="dynLabelCheck" checked></label>
+
+  <div class="section-title">🔑 KEY — VAQT BO'YICHA EFFEKT</div>
+  <label class="checkbox-label">Key rejimi yoqilsin: <input type="checkbox" id="keyOn" checked></label>
+  <div class="player-row">
+    <button class="btn" id="addKeyBtn">➕ Slot qo'shish</button>
+    <button class="btn" id="saveKeysBtn" title="Keylarni faylga saqlash" style="flex:0 0 46px">💾</button>
+    <label class="btn" title="Keylarni fayldan yuklash" style="flex:0 0 46px;text-align:center">📂
+      <input type="file" id="loadKeysInput" accept=".json,application/json" style="display:none"></label>
+  </div>
+  <div id="keyList"></div>
+  <div class="hint">"➕" bosilsa, qo'shiqning hozirgi vaqti va ekrandagi hozirgi ko'rinish slotga yoziladi. Vaqtni <b>2:12</b> ko'rinishida yozing. Musiqa o'sha vaqtga yetganda effekt va ranglar silliq almashadi. Key slotlari bo'lsa dinamik rejim aralashmaydi.</div>
+
+  <div class="section-title">🌈 FON RANGI (BASSGA QARAB)</div>
+  <label class="checkbox-label">Fon rangi o'zgarsin: <input type="checkbox" id="bgColorFxCheck" checked></label>
+  <label>Boshlang'ich rang (jim turganda): <input type="color" id="bgStartColor" value="#0a1424"></label>
+  <label>Bass rangi (zarba paytida): <input type="color" id="bgBassColor" value="#ff1e7a"></label>
+  <label>Kuchi: <input type="range" id="bgColorPower" min="0.1" max="1" step="0.05" value="0.55"></label>
 
   <div class="section-title">⭕ DOIRA EFFEKTI (20 ta)</div>
   <label>Doira rejimi:
@@ -217,7 +282,7 @@ select, input[type="range"], input[type="color"], input[type="text"] {
   <label>Doira pulsatsiyasi (Bass): <input type="range" id="bassScale" min="0" max="2" step="0.1" value="1"></label>
   <label class="checkbox-label">Subtitr ko'rinsin: <input type="checkbox" id="showSubtitleCheck" checked></label>
   <label class="checkbox-label">Nur (Glow) yoqilsin: <input type="checkbox" id="glowCheck" checked></label>
-  <div class="hint">Tugmalar: <b>B</b> — panel, <b>Space</b> — play/pauza, <b>→ ←</b> — keyingi/oldingi qo'shiq.</div>
+  <div class="hint">Tugmalar: <b>B</b> — panel, <b>D</b> — dinamik rejim, <b>N</b> — effekt nomi yozuvi, <b>Space</b> — play/pauza, <b>→ ←</b> — keyingi/oldingi qo'shiq.</div>
 </div>
 
 <div class="subtitle-container hidden" id="subtitleContainer">
@@ -247,6 +312,13 @@ const circleModeSelect = $('circleMode'), circleColorInput = $('circleColorInput
       circleBarLengthInput = $('circleBarLength');
 const bgModeSelect = $('bgMode'), bgColorInput = $('bgColorInput'), bgBarLengthInput = $('bgBarLength');
 const enableRotateCheck = $('enableRotate'), bassScaleInput = $('bassScale');
+const colorLayer = $('colorLayer'), dynLabel = $('dynLabel'), dynBtn = $('dynBtn'),
+      dynSpeed = $('dynSpeed'), dynSpeedNum = $('dynSpeedNum'), dynSpeedLbl = $('dynSpeedLbl'),
+      dynColors = $('dynColors'), dynOnBeat = $('dynOnBeat'), dynLabelCheck = $('dynLabelCheck'),
+      bgColorFxCheck = $('bgColorFxCheck'),
+      bgStartColor = $('bgStartColor'), bgBassColor = $('bgBassColor'), bgColorPower = $('bgColorPower');
+const keyOn = $('keyOn'), keyList = $('keyList'), addKeyBtn = $('addKeyBtn'),
+      saveKeysBtn = $('saveKeysBtn'), loadKeysInput = $('loadKeysInput');
 
 /* ============================ MUSIC PAPKASI ============================ */
 /* Fayllarni HTML yonidagi "music" papkasiga tashlang.
@@ -293,6 +365,7 @@ function playTrack(i) {
   if (!audioCtx) setupAudioContext();
   if (audioCtx.state === 'suspended') audioCtx.resume();
   audio.play().then(() => { isPlaying = true; playBtn.textContent = '⏸'; }).catch(() => {});
+  curKeyIdx = -1;
   renderPlaylist();
 }
 
@@ -435,6 +508,8 @@ circleBtn.addEventListener('touchmove', cancelPress);
 window.addEventListener('keydown', e => {
   const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName);
   if ((e.key === 'b' || e.key === 'B') && !typing) toggleMainPanel();
+  if ((e.key === 'd' || e.key === 'D') && !typing) setDyn(!dynOn);
+  if ((e.key === 'n' || e.key === 'N') && !typing) toggleDynLabel();
   if (e.code === 'Space' && !typing) { e.preventDefault(); togglePlay(); }
   if (e.code === 'ArrowRight' && !typing) nextTrack(false);
   if (e.code === 'ArrowLeft' && !typing) prevTrack();
@@ -1109,12 +1184,310 @@ const screenFX = {
   }
 };
 
+/* ============================ FON RANGI (BASSGA QARAB) ============================ */
+function hexRgb(h) {
+  h = h.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbHex(a) { return '#' + a.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join(''); }
+function mixHex(a, b, t) { const A = hexRgb(a), B = hexRgb(b); return rgbHex([0, 1, 2].map(i => A[i] + (B[i] - A[i]) * t)); }
+
+let lastBgKey = '';
+function applyBgGradient() {
+  const key = bgStartColor.value + bgBassColor.value;
+  if (key === lastBgKey) return;
+  lastBgKey = key;
+  colorLayer.style.background =
+    `radial-gradient(circle at 50% 50%, ${bgBassColor.value} 0%, ${mixHex(bgBassColor.value, bgStartColor.value, 0.6)} 42%, ${bgStartColor.value} 100%)`;
+}
+bgStartColor.oninput = bgBassColor.oninput = applyBgGradient;
+applyBgGradient();
+
+function updateBgColorLayer(bass) {
+  if (!bgColorFxCheck.checked) { colorLayer.style.opacity = 0; return; }
+  const pw = parseFloat(bgColorPower.value);
+  const v = Math.pow(bass / 255, 1.4);
+  colorLayer.style.opacity = (0.1 + v * 0.9) * pw;
+}
+
+/* ============================ DINAMIK ITEM ============================ */
+/* Effektlar "oila"lariga bo'lingan — doira va ekran bir xil oiladan tanlanmaydi,
+   shuning uchun ekranda hech qachon bir xil ko'rinishdagi ikkita narsa urishmaydi. */
+const CFAM = {
+  circle360: 'bar', doubleRing: 'bar', ledRing: 'bar',
+  dotsCircle: 'dot', orbitBalls: 'dot', tripleOrbit: 'dot', spiralArms: 'dot',
+  sunburst: 'ray', spikes: 'ray', lasers: 'ray', starburst: 'ray',
+  glowRing: 'ring', ripples: 'ring', neonArcs: 'ring',
+  waveRing: 'wave', dnaRing: 'wave',
+  petals: 'organic', radarPoly: 'poly',
+  fireRing: 'fire', bubblesRing: 'bubble', none: 'x'
+};
+const SFAM = {
+  dualSides: 'bar', topBottom: 'bar', oneSide: 'bar', mirrorBars: 'bar', centerSplit: 'bar', cityscape: 'bar',
+  matrixDots: 'dot', rainLines: 'dot', confetti: 'dot',
+  starfield: 'ray', gridFloor: 'ray', cornerRays: 'ray', lightning: 'ray',
+  boxFrame: 'ring', tunnel: 'ring',
+  smoothWave: 'wave', aurora: 'wave',
+  hexPulse: 'poly', fireBottom: 'fire', bubblesUp: 'bubble', none: 'x'
+};
+const CIRCLE_KEYS = Object.keys(CFAM).filter(k => k !== 'none');
+const SCREEN_KEYS = Object.keys(SFAM).filter(k => k !== 'none');
+const HEAVY_C = ['fireRing', 'spiralArms', 'ledRing', 'sunburst'];
+const HEAVY_S = ['hexPulse', 'cityscape', 'starfield', 'fireBottom'];
+
+/* Bir-biriga mos, yoqimli rang juftliklari */
+const PALETTES = [
+  { c: '#66fcf1', s: '#ff007f', b0: '#07131f', b1: '#00d0ff' },
+  { c: '#ff2e63', s: '#ffd166', b0: '#180611', b1: '#ff2e63' },
+  { c: '#b07bff', s: '#00d9ff', b0: '#0d0722', b1: '#7b2ff7' },
+  { c: '#39ff14', s: '#00ffc8', b0: '#04140c', b1: '#1dff9c' },
+  { c: '#ffb03a', s: '#ff4d00', b0: '#1a0c02', b1: '#ff6b00' },
+  { c: '#ffffff', s: '#ff0040', b0: '#120006', b1: '#ff0040' },
+  { c: '#00ffe1', s: '#7f5aff', b0: '#050b1c', b1: '#4f7bff' },
+  { c: '#ff6ec7', s: '#8a2be2', b0: '#150620', b1: '#ff2fb2' },
+  { c: '#f5d76e', s: '#e74c3c', b0: '#150e05', b1: '#e67e22' },
+  { c: '#4fc3ff', s: '#eaf6ff', b0: '#02101e', b1: '#0077ff' }
+];
+
+let dynOn = false, dynLast = 0, palIdx = 0, fadeIn = 1, fadeDur = 0.7, colorLerp = null, labelTimer = null;
+let prevC = null, prevS = null;   // eski effekt — silliq so'nib boradi
+
+/* Ikkita effekt orasida cross-fade: eskisi so'nadi, yangisi ochiladi */
+function beginFx(c, s, dur) {
+  if (c === circleModeSelect.value && s === bgModeSelect.value) return;
+  prevC = circleModeSelect.value; prevS = bgModeSelect.value;
+  circleModeSelect.value = c; bgModeSelect.value = s;
+  fadeDur = dur || 0.7;
+  fadeIn = 0;
+}
+function startColorLerp(c, s, b0, b1, dur) {
+  colorLerp = {
+    t: 0, dur: dur || 1.1,
+    from: { c: circleColorInput.value, s: bgColorInput.value, b0: bgStartColor.value, b1: bgBassColor.value },
+    to: { c, s, b0, b1 }
+  };
+}
+
+function pickPair() {
+  const curC = circleModeSelect.value, curS = bgModeSelect.value;
+  let c, s, tries = 0;
+  do {
+    c = CIRCLE_KEYS[Math.floor(Math.random() * CIRCLE_KEYS.length)];
+    s = SCREEN_KEYS[Math.floor(Math.random() * SCREEN_KEYS.length)];
+    tries++;
+  } while (tries < 60 && (
+    c === curC || s === curS ||                       // ketma-ket takrorlanmasin
+    CFAM[c] === SFAM[s] ||                            // bir xil turdagi ikkita effekt bo'lmasin
+    (HEAVY_C.includes(c) && HEAVY_S.includes(s))      // ikkita "og'ir" effekt birga bo'lmasin
+  ));
+  return [c, s];
+}
+
+function dynInterval() {
+  const v = parseFloat(dynSpeedNum.value);
+  return isNaN(v) ? 8 : Math.max(0.1, Math.min(600, v));
+}
+
+function dynSwitch() {
+  const iv = dynInterval();
+  const [c, s] = pickPair();
+  // tez almashganda o'tish ham qisqaradi, sekin almashganda uzunroq bo'ladi
+  beginFx(c, s, Math.max(0.12, Math.min(0.7, iv * 0.45)));
+  if (dynColors.checked) {
+    palIdx = (palIdx + 1 + Math.floor(Math.random() * (PALETTES.length - 1))) % PALETTES.length;
+    const p = PALETTES[palIdx];
+    startColorLerp(p.c, p.s, p.b0, p.b1, Math.max(0.15, Math.min(1.1, iv * 0.6)));
+  }
+  if (dynLabelCheck.checked) {
+    const cName = circleModeSelect.options[circleModeSelect.selectedIndex].text.replace(/^\d+ · /, '');
+    const sName = bgModeSelect.options[bgModeSelect.selectedIndex].text.replace(/^\d+ · /, '');
+    dynLabel.innerHTML = `🎲 <b>${cName}</b> + <b>${sName}</b>`;
+    dynLabel.classList.add('show');
+    clearTimeout(labelTimer);
+    labelTimer = setTimeout(() => dynLabel.classList.remove('show'), Math.min(2600, iv * 900));
+  } else {
+    clearTimeout(labelTimer);
+    dynLabel.classList.remove('show');
+  }
+  dynLast = performance.now();
+}
+
+function setDyn(on) {
+  dynOn = on;
+  dynBtn.classList.toggle('on', on);
+  dynBtn.textContent = on ? '🎲 Dinamik rejim: YONIQ' : '🎲 Dinamik rejim: O\'CHIQ';
+  if (on) dynSwitch(); else dynLabel.classList.remove('show');
+}
+dynBtn.onclick = () => setDyn(!dynOn);
+function dynSpeedLabel() {
+  const v = dynInterval();
+  dynSpeedLbl.textContent = 'Har ' + v + ' soniyada almashadi.' +
+    (v < 2 ? ' Juda tez rejim — "faqat zarbda" e\'tiborga olinmaydi.' : '');
+}
+dynSpeed.oninput = () => { dynSpeedNum.value = dynSpeed.value; dynSpeedLabel(); };
+dynSpeedNum.oninput = () => {
+  const v = dynInterval();
+  dynSpeed.value = Math.max(0.5, Math.min(30, v));
+  dynSpeedLabel();
+};
+dynLabelCheck.onchange = () => { if (!dynLabelCheck.checked) dynLabel.classList.remove('show'); };
+/* Yozuvning o'ziga bosilsa ham o'chadi */
+dynLabel.onclick = () => { dynLabelCheck.checked = false; dynLabel.classList.remove('show'); };
+/* N tugmasi — yozuvni yoqish/o'chirish */
+function toggleDynLabel() {
+  dynLabelCheck.checked = !dynLabelCheck.checked;
+  if (!dynLabelCheck.checked) dynLabel.classList.remove('show');
+  else {
+    dynLabel.innerHTML = '🔔 Effekt nomi yoqildi';
+    dynLabel.classList.add('show');
+    clearTimeout(labelTimer);
+    labelTimer = setTimeout(() => dynLabel.classList.remove('show'), 1500);
+  }
+}
+dynSpeedLabel();
+
+function dynTick(bass, beat, dt) {
+  if (colorLerp) {
+    colorLerp.t = Math.min(1, colorLerp.t + dt / colorLerp.dur);
+    const e = colorLerp.t * colorLerp.t * (3 - 2 * colorLerp.t);   // silliq o'tish
+    circleColorInput.value = mixHex(colorLerp.from.c, colorLerp.to.c, e);
+    bgColorInput.value = mixHex(colorLerp.from.s, colorLerp.to.s, e);
+    bgStartColor.value = mixHex(colorLerp.from.b0, colorLerp.to.b0, e);
+    bgBassColor.value = mixHex(colorLerp.from.b1, colorLerp.to.b1, e);
+    document.documentElement.style.setProperty('--circle-color', circleColorInput.value);
+    applyBgGradient();
+    if (colorLerp.t >= 1) colorLerp = null;
+  }
+  if (fadeIn < 1) {
+    fadeIn = Math.min(1, fadeIn + dt / fadeDur);                   // cross-fade
+    if (fadeIn >= 1) { prevC = null; prevS = null; }
+  }
+  if (!dynOn || !isPlaying) return;
+  if (keyOn.checked && keys.length) return;                        // key slotlari ustunlik qiladi
+  const iv = dynInterval();
+  const wait = iv * 1000;
+  const since = performance.now() - dynLast;
+  if (dynOnBeat.checked && iv >= 2) {
+    // zarbni kutadi, lekin juda uzoq kutib qolmaydi
+    if ((since > wait && beat && bass > 70) || since > wait * 2) dynSwitch();
+  } else if (since > wait) dynSwitch();
+}
+
+/* ============================ KEY SLOTLARI ============================ */
+let keys = [], curKeyIdx = -1;
+
+function parseTime(v) {
+  const s = String(v).trim().replace(',', '.');
+  if (s.includes(':')) {
+    const p = s.split(':');
+    return (parseInt(p[0]) || 0) * 60 + (parseFloat(p[1]) || 0);
+  }
+  return parseFloat(s) || 0;
+}
+function keyTimeStr(t) {
+  const m = Math.floor(t / 60), sec = t - m * 60;
+  return m + ':' + (sec < 10 ? '0' : '') + (Math.round(sec * 10) / 10).toString().replace(/\.0$/, '');
+}
+function sortKeys() { keys.sort((a, b) => a.t - b.t); }
+
+function addKey() {
+  keys.push({
+    t: Math.round((audio.currentTime || 0) * 10) / 10,
+    c: circleModeSelect.value, s: bgModeSelect.value,
+    cc: circleColorInput.value, sc: bgColorInput.value,
+    b0: bgStartColor.value, b1: bgBassColor.value
+  });
+  sortKeys(); curKeyIdx = -1; renderKeys();
+}
+addKeyBtn.onclick = addKey;
+
+function renderKeys() {
+  keyList.innerHTML = '';
+  if (!keys.length) { keyList.innerHTML = '<div class="hint">Hozircha slot yo\'q. Qo\'shiqni kerakli joyiga qo\'ying, ko\'rinishni sozlang va "➕" bosing.</div>'; return; }
+  keys.forEach((k, i) => {
+    const box = document.createElement('div');
+    box.className = 'key-item' + (i === curKeyIdx ? ' live' : '');
+    box.innerHTML =
+      `<div class="key-head">
+         <span class="num">#${i + 1}</span>
+         <input type="text" class="key-time" value="${keyTimeStr(k.t)}">
+         <button class="mini now" title="Hozirgi vaqtni olish">⏱</button>
+         <button class="mini go" title="Shu vaqtga o'tish">▶</button>
+         <button class="mini del" title="O'chirish" style="margin-left:auto">✖</button>
+       </div>
+       <select class="kc">${circleModeSelect.innerHTML}</select>
+       <select class="ks">${bgModeSelect.innerHTML}</select>
+       <div class="key-colors">
+         <label>Doira<input type="color" class="kcc" value="${k.cc}"></label>
+         <label>Ekran<input type="color" class="ksc" value="${k.sc}"></label>
+         <label>Fon<input type="color" class="kb0" value="${k.b0}"></label>
+         <label>Bass<input type="color" class="kb1" value="${k.b1}"></label>
+       </div>`;
+    const q = c => box.querySelector(c);
+    q('.kc').value = k.c; q('.ks').value = k.s;
+    q('.key-time').onchange = e => { k.t = parseTime(e.target.value); sortKeys(); curKeyIdx = -1; renderKeys(); };
+    q('.now').onclick = () => { k.t = Math.round((audio.currentTime || 0) * 10) / 10; sortKeys(); curKeyIdx = -1; renderKeys(); };
+    q('.go').onclick = () => { if (!isNaN(audio.duration)) { audio.currentTime = k.t; curKeyIdx = -1; } };
+    q('.del').onclick = () => { keys.splice(i, 1); curKeyIdx = -1; renderKeys(); };
+    q('.kc').onchange = e => k.c = e.target.value;
+    q('.ks').onchange = e => k.s = e.target.value;
+    q('.kcc').oninput = e => k.cc = e.target.value;
+    q('.ksc').oninput = e => k.sc = e.target.value;
+    q('.kb0').oninput = e => k.b0 = e.target.value;
+    q('.kb1').oninput = e => k.b1 = e.target.value;
+    keyList.appendChild(box);
+  });
+}
+renderKeys();
+
+function applyKey(k) {
+  beginFx(k.c, k.s, 0.7);
+  startColorLerp(k.cc, k.sc, k.b0, k.b1, 1.1);
+  dynLast = performance.now();
+}
+
+function keyTick() {
+  if (!keyOn.checked || !keys.length) return;
+  const t = audio.currentTime || 0;
+  let idx = -1;
+  for (let i = 0; i < keys.length; i++) { if (t + 0.02 >= keys[i].t) idx = i; else break; }
+  if (idx !== curKeyIdx) {
+    const jumped = curKeyIdx;
+    curKeyIdx = idx;
+    if (idx >= 0) applyKey(keys[idx]);
+    if (!mainPanel.classList.contains('hidden') || jumped !== idx) renderKeys();
+  }
+}
+
+saveKeysBtn.onclick = () => {
+  const name = (current >= 0 && playlist[current] ? fmtName(playlist[current].name) : 'keys');
+  const blob = new Blob([JSON.stringify({ track: name, keys }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name + '.keys.json'; a.click();
+};
+loadKeysInput.onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      const arr = Array.isArray(d) ? d : d.keys;
+      if (Array.isArray(arr)) { keys = arr.map(k => ({ t: +k.t || 0, c: k.c, s: k.s, cc: k.cc, sc: k.sc, b0: k.b0, b1: k.b1 })); sortKeys(); curKeyIdx = -1; renderKeys(); }
+    } catch (err) { alert('Fayl noto\'g\'ri: ' + err.message); }
+  };
+  r.readAsText(f);
+};
+
 /* ============================ RENDER ============================ */
-let rot = 0, tt = 0, beat = false, lastBeat = 0;
+let rot = 0, tt = 0, beat = false, lastBeat = 0, scaleCur = 1, lastFrame = performance.now(), dt = 0.016;
 
 function analyze() {
   const sens = parseFloat(visualSensitivity.value);
   const sm = parseFloat(smoothInput.value);
+  // kadr tezligidan qat'iy nazar bir xil silliqlik
+  const k = 1 - Math.pow(1 - sm, Math.min(3, dt * 60));
   if (analyser) analyser.getByteFrequencyData(dataArray);
   const step = Math.max(1, Math.floor((dataArray ? dataArray.length * 0.65 : N) / N));
   for (let i = 0; i < N; i++) {
@@ -1124,9 +1497,9 @@ function analyze() {
       raw *= (1 + (i / N) * 1.6) * sens;
       if (!isPlaying) raw = 0;
     }
-    smooth[i] += (Math.min(255, raw) - smooth[i]) * sm;
+    smooth[i] += (Math.min(255, raw) - smooth[i]) * k;
   }
-  for (let k = 0; k < M; k++) mir[k] = smooth[k < N ? k : (M - 1 - k)];
+  for (let x = 0; x < M; x++) mir[x] = smooth[x < N ? x : (M - 1 - x)];
 
   const bass = (smooth[0] + smooth[1] + smooth[2] + smooth[3]) / 4;
   bassHist.push(bass); if (bassHist.length > 43) bassHist.shift();
@@ -1139,36 +1512,50 @@ function analyze() {
 
 function render() {
   requestAnimationFrame(render);
-  tt += 0.016;
-  const bass = analyze();
+  const now = performance.now();
+  dt = Math.min(0.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+  tt += dt;
 
+  const bass = analyze();
   ctx.clearRect(0, 0, W, H);
+
+  keyTick();
+  dynTick(bass, beat, dt);
+  updateBgColorLayer(bass);
 
   edgeGlow.style.opacity = (bass / 255) * 0.8;
   edgeGlow.style.boxShadow = `inset 0 0 ${40 + bass / 4}px ${circleColorInput.value}`;
 
-  const scale = 1 + (bass / 255) * 0.35 * parseFloat(bassScaleInput.value);
+  // doira pulsatsiyasi silliq ergashadi
+  const target = 1 + (bass / 255) * 0.35 * parseFloat(bassScaleInput.value);
+  scaleCur += (target - scaleCur) * Math.min(1, dt * 14);
   if (enableRotateCheck.checked) {
-    rot += 0.3 + bass / 90;
+    rot += (18 + bass * 0.67) * dt;
   } else if (rot !== 0) {
     // eng yaqin 0° holatiga silliq qaytadi va tekis qotadi
     let d = ((rot % 360) + 540) % 360 - 180;   // -180..180
-    rot = Math.abs(d) < 0.4 ? 0 : rot - d * 0.18;
+    rot = Math.abs(d) < 0.4 ? 0 : rot - d * Math.min(1, dt * 10);
   }
+  const scale = scaleCur;
   circleBtn.style.transform = `scale(${scale}) rotate(${rot}deg)`;
 
   const cx = W / 2, cy = H / 2;
   const base = { cx, cy, t: tt, bass, beat, W, H };
+  const e = fadeIn * fadeIn * (3 - 2 * fadeIn);   // silliq cross-fade
 
   const sp = Object.assign({ col: bgColorInput.value, max: parseFloat(bgBarLengthInput.value) }, base);
-  ctx.save(); (screenFX[bgModeSelect.value] || screenFX.none)(sp); ctx.restore();
-
   const cp = Object.assign({
     col: circleColorInput.value,
     len: parseFloat(circleBarLengthInput.value),
     R: (circleBtn.offsetWidth / 2) * scale + 5
   }, base);
-  ctx.save(); (circleFX[circleModeSelect.value] || circleFX.none)(cp); ctx.restore();
+
+  if (prevS && e < 1) { ctx.save(); ctx.globalAlpha = 1 - e; (screenFX[prevS] || screenFX.none)(sp); ctx.restore(); }
+  ctx.save(); ctx.globalAlpha = e; (screenFX[bgModeSelect.value] || screenFX.none)(sp); ctx.restore();
+
+  if (prevC && e < 1) { ctx.save(); ctx.globalAlpha = 1 - e; (circleFX[prevC] || circleFX.none)(cp); ctx.restore(); }
+  ctx.save(); ctx.globalAlpha = e; (circleFX[circleModeSelect.value] || circleFX.none)(cp); ctx.restore();
 }
 
 resizeCanvas();
