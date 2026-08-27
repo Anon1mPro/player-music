@@ -22,8 +22,28 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background-size: cover;
-            background-position: center;
+            position: relative;
+        }
+
+        /* ORQA FON RASMI KONTEYNERI */
+        #bgContainer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #bgImg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+            transform-origin: center center;
+            transition: transform 0.05s linear;
         }
 
         #edgeGlow {
@@ -44,13 +64,12 @@
             z-index: 2;
         }
 
-        /* YAGONA SOZLAMALAR PANELI */
         .main-panel {
             position: absolute;
             z-index: 10;
             top: 15px;
             right: 15px;
-            width: 310px;
+            width: 320px;
             max-height: 85vh;
             overflow-y: auto;
             background: rgba(15, 15, 26, 0.92);
@@ -120,7 +139,7 @@
             font-size: 11px;
         }
 
-        select, input[type="range"], input[type="color"] {
+        select, input[type="range"], input[type="color"], input[type="text"] {
             background: #1f2833;
             color: #fff;
             border: 1px solid rgba(255,255,255,0.2);
@@ -135,7 +154,7 @@
             cursor: pointer;
         }
 
-        /* MARKAZIY DOIRA */
+        /* MARKAZIY DOIRA O'RALMASI */
         .circle-wrapper {
             position: relative;
             z-index: 5;
@@ -150,11 +169,20 @@
             border-radius: 50%;
             border: 3px solid #ffffff;
             cursor: pointer;
-            background-size: cover;
-            background-position: center;
-            background-image: url('https://picsum.photos/300');
             box-shadow: 0 0 25px var(--circle-color, #66fcf1);
             touch-action: manipulation;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* DOIRA ICHIDAGI RASM */
+        .circle-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+            transform-origin: center center;
+            transition: transform 0.05s linear;
         }
 
         .subtitle-container {
@@ -178,7 +206,6 @@
             display: inline-block;
         }
 
-        /* Telefon uchun qulaylik */
         @media (max-width: 600px) {
             .main-panel {
                 width: 90%;
@@ -194,28 +221,52 @@
 </head>
 <body>
 
+    <div id="bgContainer">
+        <img id="bgImg" src="" style="display: none;" alt="Background Image">
+    </div>
+
     <div id="edgeGlow"></div>
     <canvas id="visualizer"></canvas>
 
-    <!-- DOIRA -->
     <div class="circle-wrapper">
-        <div class="circle-container" id="circleBtn"></div>
+        <div class="circle-container" id="circleBtn">
+            <img class="circle-img" id="circleImg" src="https://picsum.photos/300" alt="Circle Inner Image">
+        </div>
     </div>
 
-    <!-- YAGONA SOZLAMALAR PANELI -->
     <div class="main-panel hidden" id="mainPanel">
         <div class="panel-header">
             <h3>🎛 Sozlamalar</h3>
             <button class="close-btn" onclick="toggleMainPanel()">✖</button>
         </div>
 
-        <!-- Fayllar -->
-        <div class="section-title">📁 FAYLLAR</div>
-        <label class="file-label">🎵 Musiqa <input type="file" id="audioInput" accept="audio/*" style="display:none"></label>
-        <label class="file-label">🖼 Orqa Fon <input type="file" id="bgInput" accept="image/*" style="display:none"></label>
-        <label class="file-label">💿 Doira Rasmi <input type="file" id="circleInput" accept="image/*" style="display:none"></label>
+        <div class="section-title">🎵 MUSIQA</div>
+        <label class="file-label">🎵 Musiqa Fayli Yuklash <input type="file" id="audioInput" accept="audio/*" style="display:none"></label>
 
-        <!-- Player Boshqaruvi -->
+        <div class="section-title">🖼 ORQA FON RASMI SOZLAMALARI</div>
+        <label class="file-label">🖼 Orqa Fon Faylini Yuklash <input type="file" id="bgFileInput" accept="image/*" style="display:none"></label>
+        <label>🔗 Orqa Fon URL (Silka):
+            <input type="text" id="bgUrlInput" placeholder="https://example.com/bg.jpg">
+        </label>
+        <label>🔍 Fon Kattaligi (Scale):
+            <input type="range" id="bgScaleInput" min="0.5" max="3" step="0.05" value="1">
+        </label>
+        <label>🔄 Fon Burilishi (Rotate):
+            <input type="range" id="bgRotateInput" min="0" max="360" step="1" value="0">
+        </label>
+
+        <div class="section-title">💿 DOIRA RASMI SOZLAMALARI</div>
+        <label class="file-label">💿 Doira Rasmini Yuklash <input type="file" id="circleFileInput" accept="image/*" style="display:none"></label>
+        <label>🔗 Doira Rasmi URL (Silka):
+            <input type="text" id="circleUrlInput" placeholder="https://example.com/image.jpg">
+        </label>
+        <label>🔍 Rasm Kattaligi (Scale):
+            <input type="range" id="imgScaleInput" min="0.5" max="2" step="0.05" value="1">
+        </label>
+        <label>🔄 Rasm Burilishi (Rotate):
+            <input type="range" id="imgRotateInput" min="0" max="360" step="1" value="0">
+        </label>
+
         <div class="section-title">▶ PLAYER</div>
         <div style="display: flex; gap: 8px; align-items: center;">
             <button id="playBtn" style="background:#1f2833; border:1px solid #fff; color:#fff; padding:6px 12px; border-radius:4px;">▶</button>
@@ -226,7 +277,6 @@
             <input type="range" id="volumeBar" value="1" min="0" max="1" step="0.05">
         </label>
 
-        <!-- Doira Sozlamalari -->
         <div class="section-title">⭕ DOIRA EFFEKTI</div>
         <label>Doira Rejimi:
             <select id="circleMode">
@@ -244,7 +294,6 @@
             <input type="range" id="circleBarLength" min="10" max="200" step="5" value="60">
         </label>
 
-        <!-- Ekran Sozlamalari -->
         <div class="section-title">📺 EKRAN EFFEKTI</div>
         <label>Ekran Rejimi:
             <select id="bgMode">
@@ -264,7 +313,6 @@
             <input type="range" id="bgBarLength" min="0.05" max="0.8" step="0.05" value="0.25">
         </label>
 
-        <!-- Qo'shimchalar -->
         <div class="section-title">⚙ O'ZGARISHLAR</div>
         <label class="checkbox-label">Doira Aylansin:
             <input type="checkbox" id="enableRotate" checked>
@@ -277,21 +325,30 @@
         </label>
     </div>
 
-    <!-- Subtitr -->
     <div class="subtitle-container hidden" id="subtitleContainer">
         <div class="subtitle" id="subtitleText">Musiqa yuklang (Doirani bosib tursangiz panel chiqadi)</div>
     </div>
 
     <script>
         const circleBtn = document.getElementById('circleBtn');
+        const circleImg = document.getElementById('circleImg');
+        const bgImg = document.getElementById('bgImg');
         const mainPanel = document.getElementById('mainPanel');
         const subtitleContainer = document.getElementById('subtitleContainer');
         const subtitleText = document.getElementById('subtitleText');
         const showSubtitleCheck = document.getElementById('showSubtitleCheck');
         
         const audioInput = document.getElementById('audioInput');
-        const bgInput = document.getElementById('bgInput');
-        const circleInput = document.getElementById('circleInput');
+        const bgFileInput = document.getElementById('bgFileInput');
+        const bgUrlInput = document.getElementById('bgUrlInput');
+        const bgScaleInput = document.getElementById('bgScaleInput');
+        const bgRotateInput = document.getElementById('bgRotateInput');
+
+        const circleFileInput = document.getElementById('circleFileInput');
+        const circleUrlInput = document.getElementById('circleUrlInput');
+        const imgScaleInput = document.getElementById('imgScaleInput');
+        const imgRotateInput = document.getElementById('imgRotateInput');
+        
         const edgeGlow = document.getElementById('edgeGlow');
         const canvas = document.getElementById('visualizer');
         const ctx = canvas.getContext('2d');
@@ -330,7 +387,53 @@
             }
         }
 
-        // DOIRANI BOSIB TURISH (LONG PRESS) MANTIQLARI
+        // ORQA FON TRANSFORMASIYASI (Scale & Rotate)
+        function updateBgTransform() {
+            let scale = bgScaleInput.value;
+            let rotate = bgRotateInput.value;
+            bgImg.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
+        }
+
+        bgScaleInput.oninput = updateBgTransform;
+        bgRotateInput.oninput = updateBgTransform;
+
+        bgFileInput.onchange = (e) => {
+            if(e.target.files[0]) {
+                bgImg.src = URL.createObjectURL(e.target.files[0]);
+                bgImg.style.display = 'block';
+            }
+        };
+
+        bgUrlInput.onchange = (e) => {
+            if(e.target.value.trim() !== '') {
+                bgImg.src = e.target.value.trim();
+                bgImg.style.display = 'block';
+            }
+        };
+
+        // DOIRA RASMI TRANSFORMASIYASI (Scale & Rotate)
+        function updateCircleImageTransform() {
+            let scale = imgScaleInput.value;
+            let rotate = imgRotateInput.value;
+            circleImg.style.transform = `scale(${scale}) rotate(${rotate}deg)`;
+        }
+
+        imgScaleInput.oninput = updateCircleImageTransform;
+        imgRotateInput.oninput = updateCircleImageTransform;
+
+        circleFileInput.onchange = (e) => {
+            if(e.target.files[0]) {
+                circleImg.src = URL.createObjectURL(e.target.files[0]);
+            }
+        };
+
+        circleUrlInput.onchange = (e) => {
+            if(e.target.value.trim() !== '') {
+                circleImg.src = e.target.value.trim();
+            }
+        };
+
+        // LONG PRESS MANTIQLARI (Doirani bosib turish)
         let pressTimer;
         let isLongPress = false;
 
@@ -338,7 +441,7 @@
             isLongPress = false;
             pressTimer = setTimeout(() => {
                 isLongPress = true;
-                toggleMainPanel(); // 0.5s bosib tursa sozlamalar chiqadi
+                toggleMainPanel();
             }, 500);
         }
 
@@ -346,13 +449,12 @@
             clearTimeout(pressTimer);
         }
 
-        // Sichqoncha va Touch hodisalari
         circleBtn.addEventListener('mousedown', startPress);
         circleBtn.addEventListener('touchstart', (e) => { startPress(); }, {passive: true});
 
         circleBtn.addEventListener('mouseup', () => {
             cancelPress();
-            if (!isLongPress) togglePlay(); // Bir marta bossa Play/Pause
+            if (!isLongPress) togglePlay();
         });
 
         circleBtn.addEventListener('touchend', () => {
@@ -363,7 +465,7 @@
         circleBtn.addEventListener('mouseleave', cancelPress);
         circleBtn.addEventListener('touchmove', cancelPress);
 
-        // KLAVIATURA TUGMALARI
+        // KLAVIATURA (B va Space)
         window.addEventListener('keydown', (e) => {
             if (e.key === 'b' || e.key === 'B') {
                 toggleMainPanel();
@@ -387,14 +489,6 @@
             }
         };
 
-        bgInput.onchange = (e) => {
-            if(e.target.files[0]) document.body.style.backgroundImage = `url(${URL.createObjectURL(e.target.files[0])})`;
-        };
-
-        circleInput.onchange = (e) => {
-            if(e.target.files[0]) circleBtn.style.backgroundImage = `url(${URL.createObjectURL(e.target.files[0])})`;
-        };
-
         circleColorInput.oninput = (e) => {
             document.documentElement.style.setProperty('--circle-color', e.target.value);
         };
@@ -402,7 +496,7 @@
         playBtn.onclick = togglePlay;
 
         function togglePlay() {
-            if (!audio.src) return alert("Avval fayllar bo'limidan musiqa yuklang!");
+            if (!audio.src) return alert("Avval musiqa faylini yuklang!");
             if (!audioCtx) setupAudioContext();
 
             if (isPlaying) {
